@@ -1,10 +1,12 @@
-﻿import React from "react";
+﻿import React, { useState, useEffect } from "react";
+import DraggableFlatList from "react-native-draggable-flatlist";
 import {
   View,
   Text,
   Image,
   Pressable,
   StyleSheet,
+  useWindowDimensions,
 } from "react-native";
 
 const COLOURS = {
@@ -82,7 +84,31 @@ function getEdge(item) {
     null
   );
 }
-function Book({ item, index, onBookPress }) {
+function getDisplayWidth(book) {
+  const displayStyle =
+    book.editionRecord?.display_style || "spine";
+
+  switch (displayStyle) {
+    case "cover":
+      return 70; // 65 width + margins
+
+    case "stack":
+      return 100; // 90 width + margins
+
+    case "edge":
+      return 45; // 40 width + margins
+
+    case "spine":
+    default:
+      return 35; // 30 width + margins
+  }
+}
+function Book({
+  item,
+  index,
+  onBookPress,
+  onLongPress,
+}) {
   const spine = getSpine(item);
   const cover = getCover(item);
   const edge = getEdge(item);
@@ -104,9 +130,9 @@ const spineSource = spine || null;
 
   return (
 <Pressable
-
-
-      onPress={() => onBookPress?.(item)}
+  onPress={() => onBookPress?.(item)}
+  onLongPress={onLongPress}
+  delayLongPress={300}
      style={{
   marginHorizontal: 2,
   alignItems: "flex-end",
@@ -126,25 +152,22 @@ const spineSource = spine || null;
   <View
     style={{
       width: 90,
-      height: 22,
-      backgroundColor: COLOURS.placeholder2,
-      borderRadius: 2,
-      borderLeftWidth: 3,
-      borderLeftColor: "#C9A86A",
-      justifyContent: "center",
-      paddingHorizontal: 6,
-      marginBottom: 2,
+      height: 90,
+      justifyContent: "flex-end",
+      alignItems: "center",
     }}
   >
-    <Text
-      numberOfLines={1}
-      style={{
-        color: COLOURS.text,
-        fontSize: 8,
+    <Image
+      source={{
+        uri: spine || edge || cover,
       }}
-    >
-      {getTitle(item)}
-    </Text>
+      resizeMode="cover"
+      style={{
+        width: 90,
+        height: 22,
+        borderRadius: 2,
+      }}
+    />
   </View>
   ) : displayStyle === "edge" && edge ? (
   <Image
@@ -199,25 +222,28 @@ const spineSource = spine || null;
         );
 }
 
-function Shelf({ books, shelfIndex, onBookPress }) {
- return (
-  <View style={styles.shelfContainer}>
-  <View style={styles.bookRow}>
-    {books.map((book, index) => (
-      <Book
-        key={`${getBookId(book)}-${index}`}
-        item={book}
-        index={shelfIndex * 12 + index}
-        onBookPress={onBookPress}
-      />
-    ))}
+function Shelf({
+  books,
+  shelfIndex,
+  onBookPress,
+  onDragEnd,
+}) {
+  return (
+    <View style={styles.shelfContainer}>
+     <View style={styles.bookRow}>
+  {books.map((book, index) => (
+    <Book
+      key={`${getBookId(book)}-${index}`}
+      item={book}
+      index={index}
+      onBookPress={onBookPress}
+    />
+  ))}
   </View>
-
       <View style={styles.shelfTop} />
       <View style={styles.shelfFace} />
-        </View>
-
-);
+    </View>
+  );
 }
 
 export default function Bookshelf({
@@ -226,39 +252,53 @@ export default function Bookshelf({
   emptyTitle = "Your library is waiting",
   emptyMessage = "Add books to start building your collection.",
 }) {
+  const [bookData, setBookData] = useState(items);
+const { width: screenWidth } = useWindowDimensions();
+useEffect(() => {
+  setBookData(items);
+}, [items]);
+
+const handleShelfDragEnd = () => {};
+ const shelves = [];
+
+const BOOKS_PER_SHELF = 5;
+
+for (
+  let i = 0;
+  i < bookData.length;
+  i += BOOKS_PER_SHELF
+) {
+  shelves.push(
+    bookData.slice(i, i + BOOKS_PER_SHELF)
+  );
+}
   if (!items.length) {
     return (
       <View style={styles.empty}>
         <Text style={styles.emptyTitle}>
           {emptyTitle}
         </Text>
-
         <Text style={styles.emptyText}>
           {emptyMessage}
         </Text>
       </View>
     );
   }
-
-const shelves = [];
-
-const BOOKS_PER_SHELF = 5;
-
-for (let i = 0; i < items.length; i += BOOKS_PER_SHELF) {
-  shelves.push(items.slice(i, i + BOOKS_PER_SHELF));
-}
   return (
   <View style={styles.bookcase}>
     <View style={styles.bookcaseSideLeft} />
 
     <View style={styles.container}>
    {shelves.map((shelf, index) => (
-  <Shelf
-    key={`shelf-${index}`}
-    books={shelf}
-    shelfIndex={index}
-    onBookPress={onBookPress}
-  />
+ <Shelf
+  key={`shelf-${index}`}
+  books={shelf}
+  shelfIndex={index}
+  onBookPress={onBookPress}
+  onDragEnd={(data) =>
+    handleShelfDragEnd(index, data)
+  }
+/>
 ))}
     </View>
 

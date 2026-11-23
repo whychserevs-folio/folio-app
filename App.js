@@ -1,4 +1,5 @@
-﻿import * as FileSystem from "expo-file-system/legacy";
+﻿import "react-native-gesture-handler";
+import * as FileSystem from "expo-file-system/legacy";
 import { decode } from "base64-arraybuffer";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -17,6 +18,7 @@ import {
   View,
   BackHandler,
 } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "./src/supabase";
@@ -255,11 +257,9 @@ function Bookshelf({ items, onBookPress, seriesByBook }) {
       .map(([name, books]) => ({
         name,
         books: books.sort((a, b) => {
-          if (a._readingOrder !== b._readingOrder) {
-            return a._readingOrder - b._readingOrder;
-          }
-          return String(a.title).localeCompare(String(b.title));
-        }),
+  return (a.sort_order ?? 9999) -
+         (b.sort_order ?? 9999);
+}),
       }))
       .sort((a, b) => {
         if (a.name === "Standalone books") return 1;
@@ -4021,6 +4021,7 @@ if (authLoading) {
 if (!session) return <AuthScreen />;
 
 return (
+  <GestureHandlerRootView style={{ flex: 1 }}>
   <SafeAreaView style={styles.safe}>
     <StatusBar barStyle="light-content" backgroundColor={C.bg} />
 
@@ -4353,6 +4354,7 @@ return (
       </KeyboardAvoidingView>
     </Modal>
   </SafeAreaView>
+   </GestureHandlerRootView>
 );
 }
 const styles = StyleSheet.create({
