@@ -1,4 +1,5 @@
-import { Image, Modal, Pressable, ScrollView, Text, View } from "react-native";
+import { Modal, Pressable, ScrollView, Text, View } from "react-native";
+import { Image } from "expo-image";
 
 import { supabase } from "../../supabase";
 import styles from "../../styles";

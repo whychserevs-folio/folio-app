@@ -1,4 +1,5 @@
-import { Image, Pressable, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
+import { Image } from "expo-image";
 
 import styles from "../styles";
 import { C } from "../theme";
@@ -68,7 +69,7 @@ export default function FormModal() {
   <Image
     source={{ uri: bookForm.cover_url }}
     style={styles.coverHeroImage}
-    resizeMode="cover"
+    contentFit="cover" transition={150}
   />
 </Pressable>
           ) : (
@@ -253,7 +254,7 @@ export default function FormModal() {
             <View style={styles.imagePreviewRow}>
               <Image
                 source={{ uri: bookForm.spine_image_url }}
-                resizeMode="cover"
+                contentFit="cover" transition={150}
                 style={styles.spinePreview}
               />
               <Text style={styles.mutedText}>Spine image selected</Text>
@@ -264,7 +265,7 @@ export default function FormModal() {
             <View style={styles.imagePreviewRow}>
               <Image
                 source={{ uri: bookForm.sprayed_edge_url }}
-                resizeMode="cover"
+                contentFit="cover" transition={150}
                 style={styles.edgePreview}
               />
               <Text style={styles.mutedText}>Sprayed-edge image selected</Text>
@@ -543,7 +544,7 @@ export default function FormModal() {
       height: 155,
       borderRadius: 8,
     }}
-    resizeMode="cover"
+    contentFit="cover" transition={150}
     onLoad={() => console.log("IMAGE LOADED")}
     onError={(e) =>
       console.log(

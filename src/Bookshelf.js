@@ -9,12 +9,12 @@ import React, {
 import {
   View,
   Text,
-  Image,
   Pressable,
   StyleSheet,
   Platform,
   useWindowDimensions,
 } from "react-native";
+import { Image } from "expo-image";
 import {
   GestureDetector,
   usePanGesture,
@@ -264,7 +264,7 @@ function BookVisual({ item, index }) {
     return (
       <Image
         source={{ uri: cover }}
-        resizeMode="cover"
+        contentFit="cover" transition={150}
         style={{ width: 65, height: 110, borderRadius: 6 }}
       />
     );
@@ -279,7 +279,7 @@ function BookVisual({ item, index }) {
           <View style={styles.lyingBook}>
             <Image
               source={{ uri: spine }}
-              resizeMode="stretch"
+              contentFit="fill"
               style={styles.lyingSpineImage}
             />
           </View>
@@ -297,7 +297,7 @@ function BookVisual({ item, index }) {
     return (
       <Image
         source={{ uri: edge }}
-        resizeMode="cover"
+        contentFit="cover" transition={150}
         style={{ width: 40, height: 140, borderRadius: 2 }}
       />
     );
@@ -306,7 +306,7 @@ function BookVisual({ item, index }) {
     return (
       <Image
         source={{ uri: spine }}
-        resizeMode="stretch"
+        contentFit="fill"
         style={{ width: 30, height: 140, borderRadius: 2 }}
       />
     );

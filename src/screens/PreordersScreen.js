@@ -1,4 +1,5 @@
-import { Image, Pressable, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
+import { Image } from "expo-image";
 
 import styles from "../styles";
 import { displayDate, money, monthYear, todayISO } from "../utils/format";
