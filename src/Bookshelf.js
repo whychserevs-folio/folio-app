@@ -6,7 +6,6 @@ import {
   Image,
   Pressable,
   StyleSheet,
-  useWindowDimensions,
 } from "react-native";
 
 const COLOURS = {
@@ -108,6 +107,7 @@ function Book({
   index,
   onBookPress,
   onLongPress,
+  isActive = false,
 }) {
   const spine = getSpine(item);
   const cover = getCover(item);
@@ -133,9 +133,12 @@ const spineSource = spine || null;
   onPress={() => onBookPress?.(item)}
   onLongPress={onLongPress}
   delayLongPress={300}
+  disabled={isActive}
      style={{
   marginHorizontal: 2,
   alignItems: "flex-end",
+  opacity: isActive ? 0.85 : 1,
+  transform: [{ scale: isActive ? 1.08 : 1 }],
 }}
     >
 {displayStyle === "cover" && cover ? (
@@ -228,40 +231,82 @@ function Shelf({
   onBookPress,
   onDragEnd,
 }) {
+  // Static shelf when the parent can't persist an order (collections, TBR,
+  // filtered/search views).
+  if (!onDragEnd) {
+    return (
+      <View style={styles.shelfContainer}>
+        <View style={styles.bookRow}>
+          {books.map((book, index) => (
+            <Book
+              key={`${book.id ?? getBookId(book)}-${index}`}
+              item={book}
+              index={index}
+              onBookPress={onBookPress}
+            />
+          ))}
+        </View>
+        <View style={styles.shelfTop} />
+        <View style={styles.shelfFace} />
+      </View>
+    );
+  }
+
+  // Long-press a book to pick it up, drag left/right to reorder within the shelf.
   return (
     <View style={styles.shelfContainer}>
-     <View style={styles.bookRow}>
-  {books.map((book, index) => (
-    <Book
-      key={`${getBookId(book)}-${index}`}
-      item={book}
-      index={index}
-      onBookPress={onBookPress}
-    />
-  ))}
-  </View>
+      <DraggableFlatList
+        horizontal
+        scrollEnabled={false}
+        data={books}
+        keyExtractor={(book, index) =>
+          String(book.editionRecord?.id ?? book.id ?? `${getBookId(book)}-${index}`)
+        }
+        onDragEnd={({ data, from, to }) => {
+          if (from !== to) onDragEnd(data);
+        }}
+        containerStyle={styles.bookRow}
+        contentContainerStyle={styles.bookRowContent}
+        renderItem={({ item, drag, isActive, getIndex }) => (
+          <Book
+            item={item}
+            index={(getIndex?.() ?? 0) + shelfIndex * BOOKS_PER_SHELF}
+            onBookPress={onBookPress}
+            onLongPress={drag}
+            isActive={isActive}
+          />
+        )}
+      />
       <View style={styles.shelfTop} />
       <View style={styles.shelfFace} />
     </View>
   );
 }
 
+const BOOKS_PER_SHELF = 5;
+
 export default function Bookshelf({
   items = [],
   onBookPress,
+  onReorder,
   emptyTitle = "Your library is waiting",
   emptyMessage = "Add books to start building your collection.",
 }) {
   const [bookData, setBookData] = useState(items);
-const { width: screenWidth } = useWindowDimensions();
 useEffect(() => {
   setBookData(items);
 }, [items]);
 
-const handleShelfDragEnd = () => {};
+// Splice the reordered shelf back into the full list, update the UI
+// immediately, then hand the complete new order to the parent to persist.
+const handleShelfDragEnd = (shelfIndex, shelfData) => {
+  const start = shelfIndex * BOOKS_PER_SHELF;
+  const next = [...bookData];
+  next.splice(start, shelfData.length, ...shelfData);
+  setBookData(next);
+  onReorder?.(next);
+};
  const shelves = [];
-
-const BOOKS_PER_SHELF = 5;
 
 for (
   let i = 0;
@@ -295,8 +340,10 @@ for (
   books={shelf}
   shelfIndex={index}
   onBookPress={onBookPress}
-  onDragEnd={(data) =>
-    handleShelfDragEnd(index, data)
+  onDragEnd={
+    onReorder
+      ? data => handleShelfDragEnd(index, data)
+      : undefined
   }
 />
 ))}
@@ -326,6 +373,10 @@ bookRow: {
   justifyContent: "flex-start",
   paddingBottom: 6,
   paddingHorizontal: 8,
+},
+
+bookRowContent: {
+  alignItems: "flex-end",
 },
 
 shelfTop: {

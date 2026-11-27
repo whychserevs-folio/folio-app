@@ -411,6 +411,14 @@ export default function App() {
   const [seriesBooks, setSeriesBooks] = useState([]);
   const [subscriptions, setSubscriptions] = useState([]);
   const [subscriptionBooks, setSubscriptionBooks] = useState([]);
+
+  const [selectedBook, setSelectedBook] = useState(null);
+  const [selectedCollection, setSelectedCollection] = useState(null);
+  const [selectedUniverse, setSelectedUniverse] = useState(null);
+  const [selectedSeries, setSelectedSeries] = useState(null);
+  const [selectedSubscription, setSelectedSubscription] = useState(null);
+  const [selectedPreorder, setSelectedPreorder] = useState(null);
+  const [editingPreorderId, setEditingPreorderId] = useState(null);
  useEffect(() => {
   const subscription = BackHandler.addEventListener(
     "hardwareBackPress",
@@ -435,14 +443,6 @@ console.log("selectedUniverse:", selectedUniverse);
 
   return () => subscription.remove();
 }, [selectedBook]);
-
-  const [selectedBook, setSelectedBook] = useState(null);
-  const [selectedCollection, setSelectedCollection] = useState(null);
-  const [selectedUniverse, setSelectedUniverse] = useState(null);
-  const [selectedSeries, setSelectedSeries] = useState(null);
-  const [selectedSubscription, setSelectedSubscription] = useState(null);
-  const [selectedPreorder, setSelectedPreorder] = useState(null);
-  const [editingPreorderId, setEditingPreorderId] = useState(null);
   const [showProfile, setShowProfile] = useState(false);
   const [profile, setProfile] = useState({
     username: "",
@@ -937,6 +937,34 @@ const libraryItems = useMemo(() => {
 }));
   });
 }, [books, editions, tbrIds, dnfIds]);
+
+// Persist a drag-and-drop shelf order. Optimistic: update local editions
+// first, then save in one RPC call; reload from the server if the save fails.
+const reorderLibrary = useCallback(
+  async orderedItems => {
+    const editionIds = orderedItems
+      .map(item => item.editionRecord?.id)
+      .filter(Boolean);
+    if (!editionIds.length) return;
+
+    const position = new Map(editionIds.map((id, i) => [id, i + 1]));
+    setEditions(current =>
+      current.map(e =>
+        position.has(e.id) ? { ...e, sort_order: position.get(e.id) } : e
+      )
+    );
+
+    const { error } = await supabase.rpc("reorder_editions", {
+      p_edition_ids: editionIds,
+    });
+
+    if (error) {
+      Alert.alert("Could not save shelf order", error.message);
+      loadData();
+    }
+  },
+  [loadData]
+);
 
 const visibleItems = useMemo(() => {
   const query = search.trim().toLowerCase();
@@ -2452,6 +2480,8 @@ const renderLibrary = () => (
       items={visibleItems}
       onBookPress={setSelectedBook}
       seriesByBook={seriesByBook}
+      // Only the full, unfiltered library has a complete order to save.
+      onReorder={search.trim() ? undefined : reorderLibrary}
     />
   </>
 );
