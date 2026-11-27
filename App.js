@@ -1,7 +1,13 @@
 ﻿import "react-native-gesture-handler";
 import * as FileSystem from "expo-file-system/legacy";
 import { decode } from "base64-arraybuffer";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -392,6 +398,10 @@ export default function App() {
   const [session, setSession] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [loading, setLoading] = useState(false);
+  // The user whose data has finished loading at least once. Later reloads for
+  // that user refresh in the background instead of replacing the whole screen
+  // with a spinner; a different user gets the full loading screen again.
+  const [loadedForUser, setLoadedForUser] = useState(null);
   const [saving, setSaving] = useState(false);
 
   const [error, setError] = useState("");
@@ -423,16 +433,7 @@ export default function App() {
   const subscription = BackHandler.addEventListener(
     "hardwareBackPress",
     () => {
-
-      console.log("BACK BUTTON PRESSED");
-      console.log("BACK BUTTON PRESSED");
-console.log("selectedBook:", selectedBook);
-console.log("selectedCollection:", selectedCollection);
-console.log("selectedSeries:", selectedSeries);
-console.log("selectedUniverse:", selectedUniverse);
-
       if (selectedBook) {
-        console.log("CLOSING BOOK");
         setSelectedBook(null);
         return true;
       }
@@ -889,6 +890,7 @@ setSubscriptionBooks(subscriptionBookRows);
   setError(e.message || "Unable to load Folio data.");
 } finally {
   setLoading(false);
+  setLoadedForUser(userId);
 }
 
 }, [userId, loadTable]);
@@ -915,14 +917,24 @@ const seriesByBook = useMemo(() => {
 }, [seriesBooks, series]);
 
 const libraryItems = useMemo(() => {
+  // Group once instead of filtering all editions per book (was O(books × editions)).
+  const editionsByBook = new Map();
+  editions.forEach(e => {
+    const list = editionsByBook.get(e.book_id);
+    if (list) list.push(e);
+    else editionsByBook.set(e.book_id, [e]);
+  });
+  const tbrSet = new Set(tbrIds);
+  const dnfSet = new Set(dnfIds);
+
   return books.flatMap(book => {
-    const bookEditions = editions.filter(e => e.book_id === book.id);
+    const bookEditions = editionsByBook.get(book.id) || [];
     const common = {
       ...book,
       book_id: book.id,
       bookRecord: book,
-      isTbr: tbrIds.includes(book.id),
-      isDnf: dnfIds.includes(book.id),
+      isTbr: tbrSet.has(book.id),
+      isDnf: dnfSet.has(book.id),
     };
 
     if (!bookEditions.length) return [common];
@@ -966,15 +978,18 @@ const reorderLibrary = useCallback(
   [loadData]
 );
 
+// Typing stays responsive: the shelf re-filters with the deferred value,
+// so React can skip intermediate keystrokes on slower phones.
+const deferredSearch = useDeferredValue(search);
+
 const visibleItems = useMemo(() => {
-  const query = search.trim().toLowerCase();
+  const query = deferredSearch.trim().toLowerCase();
 
   return libraryItems
     .filter(item => {
-      const id = bookId(item);
-
-      if (tab === "TBR" && !tbrIds.includes(id)) return false;
-      if (tab === "DNF" && !dnfIds.includes(id)) return false;
+      // isTbr / isDnf are precomputed in libraryItems (same as tbrIds.includes(bookId(item))).
+      if (tab === "TBR" && !item.isTbr) return false;
+      if (tab === "DNF" && !item.isDnf) return false;
 
       if (!query) return true;
 
@@ -994,7 +1009,7 @@ const visibleItems = useMemo(() => {
         (a.sort_order ?? 9999) -
         (b.sort_order ?? 9999)
     );
-}, [libraryItems, search, tab, tbrIds, dnfIds]);
+}, [libraryItems, deferredSearch, tab]);
 
 const resetBookForm = () => ({
   title: "",
@@ -2487,10 +2502,6 @@ const renderLibrary = () => (
 );
 
 const renderCollections = () => {
-
-  console.log("selectedSeries:", selectedSeries);
-  console.log("selectedCollection:", selectedCollection);
-  console.log("selectedUniverse:", selectedUniverse);
   if (selectedSeries) {
     const links = seriesBooks
       .filter(row => row.series_id === selectedSeries.id)
@@ -2975,31 +2986,12 @@ const renderPreorders = () => (
 
         >
           <View style={styles.preorderBook}>
-{console.log(
-    "PREORDER ITEM:",
-    item.title,
-    item.cover_url
-  )}
          <Image
   source={{ uri: item.cover_url }}
   style={{
     width: 72,
     height: 106,
-   
   }}
-  onLoad={() =>
-    console.log("PREORDER COVER LOADED")
-  }
-  onError={(e) =>
-    console.log(
-      "PREORDER COVER ERROR",
-      JSON.stringify(
-        e.nativeEvent,
-        null,
-        2
-      )
-    )
-  }
 />
             <View style={{ flex: 1 }}>
               <Text style={styles.preorderTitle}>{item.title}</Text>
@@ -4114,7 +4106,7 @@ return (
         <Text style={styles.errorText}>{error} ×</Text>
       </Pressable>
     )}
-    {loading ? (
+    {loading && loadedForUser !== userId ? (
       <View style={styles.loadingScreen}>
         <ActivityIndicator size="large" color={C.gold} />
         <Text style={styles.mutedText}>
