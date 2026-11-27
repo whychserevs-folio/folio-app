@@ -123,6 +123,71 @@ const haptic = kind => {
 
 // The book itself: spine, cover, sprayed edge, a lying "stack" book, or a
 // coloured placeholder with the title when there is no image.
+function getAuthorSurname(item) {
+  const author = item.author || item.bookRecord?.author || item.book?.author || "";
+  const first = String(author).split(/[,&]| and /i)[0].trim();
+  return first.split(/\s+/).pop() || "";
+}
+
+/*
+ * Book info lookups (Open Library etc.) only provide front covers, never
+ * spines or edges. When a book has no spine/edge photo but does have a cover,
+ * build one from the cover so each book still looks like itself on the shelf.
+ * Real photos, when added, always win.
+ */
+
+// Standing spine (30 x 140): a centre slice of the cover, shaded, with the
+// title running down the spine and the author's surname at the foot.
+function CoverSpine({ item, cover }) {
+  return (
+    <View style={[styles.genSpine, { backgroundColor: placeholderColour(item) }]}>
+      <Image source={{ uri: cover }} contentFit="cover" style={styles.genSpineArt} />
+      <View style={styles.genShade} />
+      <View style={styles.genSpineHighlight} />
+      <View style={styles.genSpineLabel}>
+        <Text numberOfLines={1} style={styles.genSpineTitle}>
+          {getTitle(item)}
+        </Text>
+        <Text numberOfLines={1} style={styles.genSpineAuthor}>
+          {getAuthorSurname(item)}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+// Lying book (90 x 26): the same idea turned sideways.
+function CoverLying({ item, cover }) {
+  return (
+    <View style={[styles.lyingBook, { backgroundColor: placeholderColour(item) }]}>
+      <Image source={{ uri: cover }} contentFit="cover" style={styles.genLyingArt} />
+      <View style={styles.genShade} />
+      <View style={styles.genLyingLabel}>
+        <Text numberOfLines={1} style={styles.genLyingTitle}>
+          {getTitle(item)}
+        </Text>
+        <Text numberOfLines={1} style={styles.genSpineAuthor}>
+          {getAuthorSurname(item)}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+// Page edge (40 x 140): the cover's colours washed out, with fine page lines.
+const PAGE_LINES = Array.from({ length: 9 }, (_, i) => i);
+function CoverEdge({ item, cover }) {
+  return (
+    <View style={[styles.genEdge, { backgroundColor: placeholderColour(item) }]}>
+      <Image source={{ uri: cover }} contentFit="cover" blurRadius={18} style={StyleSheet.absoluteFill} />
+      <View style={styles.genEdgeWash} />
+      {PAGE_LINES.map(i => (
+        <View key={i} style={[styles.genEdgeLine, { left: 3 + i * 4 }]} />
+      ))}
+    </View>
+  );
+}
+
 function BookVisual({ item, index }) {
   const style = getStyle(item);
   const spine = getSpine(item);
@@ -153,6 +218,8 @@ function BookVisual({ item, index }) {
               style={styles.lyingSpineImage}
             />
           </View>
+        ) : cover ? (
+          <CoverLying item={item} cover={cover} />
         ) : (
           <View style={[styles.lyingBook, { backgroundColor: placeholderColour(item) }]}>
             <Text numberOfLines={1} style={styles.stackText}>
@@ -181,6 +248,8 @@ function BookVisual({ item, index }) {
       />
     );
   }
+  if (style === "spine" && cover) return <CoverSpine item={item} cover={cover} />;
+  if (style === "edge" && cover) return <CoverEdge item={item} cover={cover} />;
   return (
     <View
       style={{
@@ -639,6 +708,99 @@ const styles = StyleSheet.create({
     left: 32,
     top: -32,
     transform: [{ rotate: "-90deg" }],
+  },
+  genSpine: {
+    width: 30,
+    height: 140,
+    borderRadius: 2,
+    overflow: "hidden",
+  },
+  // A 2:3 cover scaled to the spine height is ~93 wide; show its centre.
+  genSpineArt: {
+    position: "absolute",
+    width: 94,
+    height: 140,
+    left: -32,
+    top: 0,
+  },
+  genShade: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(10,8,10,0.42)",
+  },
+  genSpineHighlight: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 2,
+    backgroundColor: "rgba(255,255,255,0.14)",
+  },
+  // Label row 132 x 30, rotated to run top-to-bottom down the 30 x 140 spine.
+  genSpineLabel: {
+    position: "absolute",
+    width: 132,
+    height: 30,
+    left: -51,
+    top: 55,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 6,
+    transform: [{ rotate: "90deg" }],
+  },
+  genSpineTitle: {
+    flex: 1,
+    color: COLOURS.text,
+    fontSize: 9,
+    fontWeight: "600",
+    letterSpacing: 0.3,
+    textShadowColor: "rgba(0,0,0,0.6)",
+    textShadowRadius: 2,
+  },
+  genSpineAuthor: {
+    color: COLOURS.text,
+    opacity: 0.8,
+    fontSize: 7,
+    marginLeft: 4,
+    textShadowColor: "rgba(0,0,0,0.6)",
+    textShadowRadius: 2,
+  },
+  // A 2:3 cover 90 wide is 135 tall; show a band from its middle.
+  genLyingArt: {
+    position: "absolute",
+    width: 90,
+    height: 135,
+    left: 0,
+    top: -55,
+  },
+  genLyingLabel: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  genLyingTitle: {
+    flex: 1,
+    color: COLOURS.text,
+    fontSize: 8,
+    fontWeight: "600",
+    letterSpacing: 0.3,
+    textShadowColor: "rgba(0,0,0,0.6)",
+    textShadowRadius: 2,
+  },
+  genEdge: {
+    width: 40,
+    height: 140,
+    borderRadius: 2,
+    overflow: "hidden",
+  },
+  genEdgeWash: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(240,235,231,0.28)",
+  },
+  genEdgeLine: {
+    position: "absolute",
+    top: 2,
+    bottom: 2,
+    width: 1,
+    backgroundColor: "rgba(255,255,255,0.22)",
   },
   stackText: {
     color: COLOURS.text,
