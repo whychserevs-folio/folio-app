@@ -11,14 +11,12 @@ import React, {
 import {
   ActivityIndicator,
   Alert,
-  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
   ScrollView,
   StatusBar,
-  StyleSheet,
   Text,
   View,
   BackHandler,
@@ -29,11 +27,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "./src/supabase";
 import AuthScreen from "./src/AuthScreen";
 import * as ImagePicker from "expo-image-picker";
-import { CameraView, useCameraPermissions } from "expo-camera";
+import { useCameraPermissions } from "expo-camera";
 
 import styles from "./src/styles";
 import { C } from "./src/theme";
-import { TABS } from "./src/constants";
 import {
   todayISO,
   money,
@@ -42,7 +39,6 @@ import {
   num,
   bookId,
 } from "./src/utils/format";
-import { AppButton, Field, Chip } from "./src/components/ui";
 import { FolioContext } from "./src/state/FolioContext";
 import BookDetailScreen from "./src/screens/BookDetailScreen";
 import LibraryScreen from "./src/screens/LibraryScreen";
@@ -53,6 +49,10 @@ import SubscriptionsScreen from "./src/screens/SubscriptionsScreen";
 import StatsScreen from "./src/screens/StatsScreen";
 import PreorderDetailScreen from "./src/screens/PreorderDetailScreen";
 import FormModal from "./src/screens/FormModal";
+import TopBar from "./src/components/shell/TopBar";
+import TabBar from "./src/components/shell/TabBar";
+import ScannerModal from "./src/components/shell/ScannerModal";
+import ProfileModal from "./src/components/shell/ProfileModal";
 
 export default function App() {
   const [session, setSession] = useState(null);
@@ -1912,6 +1912,17 @@ const renderModal = () => <FormModal />;
 
 // Everything the screens read or call. Screens get these via useFolio().
 const folio = {
+  closeScanner,
+  handleBarcodeScanned,
+  pickProfileImage,
+  profile,
+  saveProfile,
+  scannerOpen,
+  session,
+  setProfile,
+  setShowProfile,
+  setTab,
+  showProfile,
   addAnotherEdition,
   addBookToCollection,
   addBookToSeries,
@@ -2018,59 +2029,9 @@ return (
   <SafeAreaView style={styles.safe}>
     <StatusBar barStyle="light-content" backgroundColor={C.bg} />
 
-    <View style={styles.topBar}>
-      <View>
-        <Text style={styles.brand}>folio</Text>
-        <Text style={styles.brandSubtitle}>Your books, beautifully organised.</Text>
-      </View>
-      <Pressable
-  onPress={() => setShowProfile(true)}
-  style={styles.signOutButton}
->
-  {profile?.avatar_url ? (
-    <Image
-      source={{ uri: profile.avatar_url }}
-      style={{
-        width: 34,
-        height: 34,
-        borderRadius: 17,
-      }}
-    />
-  ) : (
-    <Text style={styles.signOutText}>👤</Text>
-  )}
-</Pressable>
+    <TopBar />
 
-    </View>
-
-    <View style={styles.navBar}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        {TABS.map(item => (
-          <Pressable
-            key={item}
-            onPress={() => {
-              setTab(item);
-              setSearch("");
-              setSelectedBook(null);
-              setSelectedCollection(null);
-              setSelectedUniverse(null);
-              setSelectedSeries(null);
-              setSelectedSubscription(null);
-            }}
-            style={[styles.navItem, tab === item && styles.navItemActive]}
-          >
-            <Text
-              style={[
-                styles.navText,
-                tab === item && styles.navTextActive,
-              ]}
-            >
-              {item}
-            </Text>
-          </Pressable>
-        ))}
-      </ScrollView>
-    </View>
+    <TabBar />
 
     {!!error && (
       <Pressable style={styles.errorBanner} onPress={() => setError("")}>
@@ -2111,212 +2072,8 @@ return (
       </>
     )}
 
-    <Modal
-      visible={scannerOpen}
-      animationType="slide"
-      onRequestClose={closeScanner}
-    >
-      <View style={styles.scannerScreen}>
-        <CameraView
-          style={StyleSheet.absoluteFillObject}
-          facing="back"
-          barcodeScannerSettings={{
-            barcodeTypes: [
-              "ean13",
-              "ean8",
-              "upc_a",
-              "upc_e",
-              "code128",
-            ],
-          }}
-          onBarcodeScanned={handleBarcodeScanned}
-        />
-        <View style={styles.scannerOverlay}>
-          <View style={styles.scannerTop}>
-            <Text style={styles.scannerTitle}>Scan ISBN</Text>
-            <Pressable onPress={closeScanner} style={styles.scannerClose}>
-              <Text style={styles.scannerCloseText}>Close ×</Text>
-            </Pressable>
-          </View>
-          <View style={styles.scannerFrame} />
-          <Text style={styles.scannerHint}>
-            Place the ISBN barcode inside the frame.
-          </Text>
-        </View>
-      </View>
-    </Modal>
-    <Modal
-      visible={showProfile}
-      transparent
-      animationType="slide"
-      onRequestClose={() => setShowProfile(false)}
-    >
-      <View style={styles.modalBackdrop}>
-        <View style={styles.modalPanel}>
-          <View style={styles.modalTopBar}>
-            <Text style={styles.kicker}>
-              FOLIO · PROFILE
-            </Text>
-
-            <Pressable
-              onPress={() => setShowProfile(false)}
-            >
-              <Text style={styles.modalClose}>
-                Close ×
-              </Text>
-            </Pressable>
-          </View>
-
-          <ScrollView keyboardShouldPersistTaps="handled">
-
-            <View style={styles.profileHeader}>
-
-              <Pressable onPress={pickProfileImage}>
-               {profile?.avatar_url ? (
-  <>
-    {console.log("RENDERING AVATAR:", profile.avatar_url)}
-
-    <Image
-      source={{ uri: profile.avatar_url }}
-      style={styles.profileAvatar}
-      onLoad={() => console.log("AVATAR LOADED")}
-      onError={(e) =>
-        console.log(
-          "AVATAR ERROR",
-          JSON.stringify(e.nativeEvent, null, 2)
-        )
-      }
-    />
-  </>
-) : (
-                  <View style={styles.profileAvatar}>
-                    <Text style={styles.profileAvatarLetter}>
-                      {(profile?.display_name ||
-                        profile?.username ||
-                        "F")
-                        .charAt(0)
-                        .toUpperCase()}
-                    </Text>
-                  </View>
-                )}
-              </Pressable>
-
-              <Text style={styles.profileDisplayName}>
-                {profile?.display_name || "Display Name"}
-              </Text>
-
-              <Text style={styles.profileUsername}>
-                @{profile?.username}
-              </Text>
-
-              {!!profile?.bio && (
-                <Text style={styles.profileBio}>
-                  {profile.bio}
-                </Text>
-              )}
-            </View>
-
-            <Text style={styles.modalSectionTitle}>
-              PROFILE
-            </Text>
-
-            <Field
-              label="Display Name"
-              value={profile.display_name || ""}
-              onChangeText={v =>
-                setProfile(p => ({
-                  ...p,
-                  display_name: v,
-                }))
-              }
-            />
-
-            <Field
-              label="Username"
-              value={profile.username || ""}
-              onChangeText={() => { }}
-            />
-
-            <Text style={styles.mutedText}>
-              Username cannot currently be changed.
-            </Text>
-
-            <Field
-              label="Bio"
-              value={profile.bio || ""}
-              multiline
-              onChangeText={v =>
-                setProfile(p => ({
-                  ...p,
-                  bio: v,
-                }))
-              }
-            />
-
-            <Text style={styles.modalSectionTitle}>
-              PRIVACY
-            </Text>
-
-            <View style={styles.chipRow}>
-
-              <Chip
-                label="Social Features"
-                selected={profile.social_enabled}
-                onPress={() =>
-                  setProfile(p => ({
-                    ...p,
-                    social_enabled: !p.social_enabled,
-                  }))
-                }
-              />
-
-              <Chip
-                label="Public Library"
-                selected={profile.library_public}
-                onPress={() =>
-                  setProfile(p => ({
-                    ...p,
-                    library_public: !p.library_public,
-                  }))
-                }
-              />
-
-              <Chip
-                label="Public Collections"
-                selected={profile.collections_public}
-                onPress={() =>
-                  setProfile(p => ({
-                    ...p,
-                    collections_public: !p.collections_public,
-                  }))
-                }
-              />
-
-            </View>
-
-            <Text style={styles.modalSectionTitle}>
-              ACCOUNT
-            </Text>
-
-            <Text style={styles.bodyText}>
-              {session?.user?.email}
-            </Text>
-
-            <AppButton
-              label="Save Profile"
-              onPress={saveProfile}
-            />
-
-            <AppButton
-              label="Sign Out"
-              danger
-              onPress={() => supabase.auth.signOut()}
-            />
-
-          </ScrollView>
-        </View>
-      </View>
-    </Modal>
+    <ScannerModal />
+    <ProfileModal />
     <Modal
       visible={!!modal}
       transparent
