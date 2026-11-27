@@ -23,7 +23,20 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-status-bar"
+      "expo-status-bar",
+      "expo-image",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Folio to use your camera to scan book barcodes."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Folio to access your photos so you can add book covers and edition photos."
+        }
+      ]
     ],
     "extra": {
       "eas": {

@@ -33,6 +33,26 @@ FOLIO_EXPO_GO=1 npx expo start --go
 `app.config.js` drops the EAS project id only when `FOLIO_EXPO_GO=1`; builds
 are unaffected.
 
+## After pulling changes
+
+```bash
+git pull
+npm install               # always, after every pull
+npx expo start -c         # -c clears Metro's cache ("Unable to resolve module ...")
+```
+
+If a pull adds or updates a package with native code (for example
+`expo-image`, `expo-haptics`), the **development build must be rebuilt**:
+
+```bash
+eas build --profile development --platform ios   # and/or android
+```
+
+Install the new build on your phone, then run `npx expo start -c` again.
+
+Windows (PowerShell) equivalents: set an env var with
+`$env:FOLIO_EXPO_GO=1; npx expo start --go`.
+
 ## Scripts
 
 | Command | What it does |
