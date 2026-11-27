@@ -152,7 +152,7 @@ const SERIF = Platform.select({
 
 function SpineArt({ cover }) {
   return cover ? (
-    <Image source={{ uri: cover }} contentFit="fill" blurRadius={COLOUR_BLUR} style={StyleSheet.absoluteFill} />
+    <Image source={{ uri: cover }} contentFit="fill" blurRadius={COLOUR_BLUR} style={styles.spineArt} />
   ) : null;
 }
 
@@ -173,6 +173,8 @@ function GeneratedSpine({ item, cover, w, h }) {
       <View style={[styles.strip, { right: 0, width: 2, backgroundColor: "rgba(0,0,0,0.38)" }]} />
       <View style={[styles.band, { top: 0, height: 3 }]} />
       <View style={[styles.band, { bottom: 0, height: 4 }]} />
+      {/* darker title panel: keeps the title readable on light covers */}
+      <View style={styles.spinePanel} />
       <View
         style={[
           styles.spineLabel,
@@ -216,6 +218,7 @@ function GeneratedLying({ item, cover, h }) {
       <View style={[styles.stripH, { bottom: 0, height: 2, backgroundColor: "rgba(0,0,0,0.38)" }]} />
       <View style={[styles.bandV, { left: 0 }]} />
       <View style={[styles.bandV, { right: 0 }]} />
+      <View style={styles.lyingPanel} />
       <View style={styles.lyingLabel}>
         <Text
           numberOfLines={title.includes(" ") ? 2 : 1}
@@ -774,6 +777,15 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     overflow: "hidden",
   },
+  // Oversized so the blur's soft edges fall outside the book (otherwise
+  // they fade into the placeholder colour behind).
+  spineArt: {
+    position: "absolute",
+    top: -24,
+    bottom: -24,
+    left: -24,
+    right: -24,
+  },
   genTint: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(12,10,12,0.16)",
@@ -805,6 +817,28 @@ const styles = StyleSheet.create({
     width: 3,
     backgroundColor: "rgba(0,0,0,0.28)",
   },
+  spinePanel: {
+    position: "absolute",
+    top: 11,
+    bottom: 12,
+    left: 3,
+    right: 4,
+    borderRadius: 1.5,
+    backgroundColor: "rgba(14,10,12,0.58)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(244,237,226,0.18)",
+  },
+  lyingPanel: {
+    position: "absolute",
+    top: 3,
+    bottom: 3,
+    left: 7,
+    right: 7,
+    borderRadius: 1.5,
+    backgroundColor: "rgba(14,10,12,0.58)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(244,237,226,0.18)",
+  },
   // rotated to run top-to-bottom down the spine
   spineLabel: {
     position: "absolute",
@@ -823,8 +857,8 @@ const styles = StyleSheet.create({
     lineHeight: 10,
     fontWeight: "600",
     letterSpacing: 1,
-    textShadowColor: "rgba(0,0,0,0.6)",
-    textShadowRadius: 2,
+    textShadowColor: "rgba(0,0,0,0.85)",
+    textShadowRadius: 3,
   },
   spineAuthor: {
     maxWidth: 48,
@@ -834,8 +868,8 @@ const styles = StyleSheet.create({
     fontSize: 6.5,
     letterSpacing: 0.8,
     marginLeft: 6,
-    textShadowColor: "rgba(0,0,0,0.6)",
-    textShadowRadius: 2,
+    textShadowColor: "rgba(0,0,0,0.85)",
+    textShadowRadius: 3,
   },
   lyingLabel: {
     flex: 1,
@@ -853,8 +887,8 @@ const styles = StyleSheet.create({
     lineHeight: 9,
     fontWeight: "600",
     letterSpacing: 0.8,
-    textShadowColor: "rgba(0,0,0,0.6)",
-    textShadowRadius: 2,
+    textShadowColor: "rgba(0,0,0,0.85)",
+    textShadowRadius: 3,
   },
   lyingAuthor: {
     maxWidth: 30,
@@ -864,8 +898,8 @@ const styles = StyleSheet.create({
     fontSize: 6,
     letterSpacing: 0.6,
     marginLeft: 5,
-    textShadowColor: "rgba(0,0,0,0.6)",
-    textShadowRadius: 2,
+    textShadowColor: "rgba(0,0,0,0.85)",
+    textShadowRadius: 3,
   },
   genEdge: {
     width: 40,
