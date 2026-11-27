@@ -12,7 +12,7 @@ export default function UniverseForm() {
   } = useFolio();
     return (
       <>
-        <Text style={styles.modalTitle}>New universe</Text>
+        <Text style={styles.modalTitle}>{universeForm.id ? "Edit universe" : "New universe"}</Text>
         <Field
           label="Universe name"
           value={universeForm.name}
@@ -24,7 +24,7 @@ export default function UniverseForm() {
           onChangeText={v => setUniverseForm(p => ({ ...p, description: v }))}
           multiline
         />
-        <AppButton label="Create universe" onPress={addUniverse} />
+        <AppButton label={universeForm.id ? "Save changes" : "Create universe"} onPress={addUniverse} />
       </>
     );
 }

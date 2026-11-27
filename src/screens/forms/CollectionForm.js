@@ -12,7 +12,7 @@ export default function CollectionForm() {
   } = useFolio();
     return (
       <>
-        <Text style={styles.modalTitle}>New collection</Text>
+        <Text style={styles.modalTitle}>{collectionForm.id ? "Edit collection" : "New collection"}</Text>
         <Field
           label="Collection name"
           value={collectionForm.name}
@@ -26,7 +26,7 @@ export default function CollectionForm() {
           }
           multiline
         />
-        <AppButton label="Create collection" onPress={addCollection} />
+        <AppButton label={collectionForm.id ? "Save changes" : "Create collection"} onPress={addCollection} />
       </>
     );
 }

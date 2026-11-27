@@ -14,7 +14,7 @@ export default function SeriesForm() {
   } = useFolio();
     return (
       <>
-        <Text style={styles.modalTitle}>New series</Text>
+        <Text style={styles.modalTitle}>{seriesForm.id ? "Edit series" : "New series"}</Text>
         <Field
           label="Series name"
           value={seriesForm.name}
@@ -52,7 +52,7 @@ export default function SeriesForm() {
           onPress={() => setModal("universe")}
         />
 
-        <AppButton label="Create series" onPress={createSeries} />
+        <AppButton label={seriesForm.id ? "Save changes" : "Create series"} onPress={createSeries} />
       </>
     );
 }

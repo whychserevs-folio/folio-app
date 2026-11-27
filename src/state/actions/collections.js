@@ -1,3 +1,5 @@
+import { Alert } from "react-native";
+
 import { supabase } from "../../supabase";
 import { notify } from "../../components/Toast";
 
@@ -14,31 +16,76 @@ export function createCollectionsActions(deps) {
     seriesForm,
     setCollectionForm,
     setModal,
+    setSelectedCollection,
+    setSelectedSeries,
+    setSelectedUniverse,
     setSeriesForm,
     setUniverseForm,
     universeForm,
     userId,
   } = deps;
+  // Creates a collection, or saves changes when the form has an id.
   const addCollection = async () => {
-    if (!collectionForm.name.trim()) return;
-  
+    if (!collectionForm.name.trim()) {
+      notify("Name required", "Give the collection a name.");
+      return;
+    }
+    const fields = {
+      name: collectionForm.name.trim(),
+      description: String(collectionForm.description || "").trim() || null,
+    };
+
     try {
-      const { error: insertError } = await supabase
-        .from("collections")
-        .insert({
-          user_id: userId,
-          name: collectionForm.name.trim(),
-          description: collectionForm.description.trim() || null,
-          collection_type: "standard",
-        });
-  
-      if (insertError) throw insertError;
+      const { data, error: saveError } = collectionForm.id
+        ? await supabase
+            .from("collections")
+            .update(fields)
+            .eq("id", collectionForm.id)
+            .eq("user_id", userId)
+            .select()
+            .single()
+        : await supabase
+            .from("collections")
+            .insert({ ...fields, user_id: userId, collection_type: "standard" })
+            .select()
+            .single();
+
+      if (saveError) throw saveError;
+      if (collectionForm.id) setSelectedCollection?.(data);
       setCollectionForm({ name: "", description: "" });
       setModal("");
       await loadData(["collections"]);
     } catch (e) {
-      notify("Couldn't create collection", e.message);
+      notify(collectionForm.id ? "Couldn't save collection" : "Couldn't create collection", e.message);
     }
+  };
+
+  const deleteCollection = collection => {
+    Alert.alert(
+      "Delete collection?",
+      `"${collection.name}" will be deleted. The books stay in your library.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            const { error: deleteError } = await supabase
+              .from("collections")
+              .delete()
+              .eq("id", collection.id)
+              .eq("user_id", userId);
+            if (deleteError) {
+              notify("Couldn't delete collection", deleteError.message);
+              return;
+            }
+            setSelectedCollection?.(null);
+            notify("Collection deleted", collection.name);
+            await loadData(["collections"]);
+          },
+        },
+      ]
+    );
   };
 
   const addBookToCollection = async (id, collectionId) => {
@@ -85,40 +132,122 @@ export function createCollectionsActions(deps) {
   const addUniverse = async () => {
     if (!universeForm.name.trim()) return;
   
+    const fields = {
+      name: universeForm.name.trim(),
+      description: String(universeForm.description || "").trim() || null,
+    };
     try {
-      const { error: insertError } = await supabase.from("universes").insert({
-        user_id: userId,
-        name: universeForm.name.trim(),
-        description: universeForm.description.trim() || null,
-      });
-  
-      if (insertError) throw insertError;
+      const { data, error: saveError } = universeForm.id
+        ? await supabase
+            .from("universes")
+            .update(fields)
+            .eq("id", universeForm.id)
+            .eq("user_id", userId)
+            .select()
+            .single()
+        : await supabase
+            .from("universes")
+            .insert({ ...fields, user_id: userId })
+            .select()
+            .single();
+
+      if (saveError) throw saveError;
+      if (universeForm.id) setSelectedUniverse?.(data);
       setUniverseForm({ name: "", description: "" });
       setModal("");
       await loadData(["universes"]);
     } catch (e) {
-      notify("Couldn't create universe", e.message);
+      notify(universeForm.id ? "Couldn't save universe" : "Couldn't create universe", e.message);
     }
+  };
+
+  const deleteUniverse = universe => {
+    Alert.alert(
+      "Delete universe?",
+      `"${universe.name}" will be deleted. Its series and books are kept.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            const { error: deleteError } = await supabase
+              .from("universes")
+              .delete()
+              .eq("id", universe.id)
+              .eq("user_id", userId);
+            if (deleteError) {
+              notify("Couldn't delete universe", deleteError.message);
+              return;
+            }
+            setSelectedUniverse?.(null);
+            notify("Universe deleted", universe.name);
+            await loadData(["universes", "series"]);
+          },
+        },
+      ]
+    );
   };
 
   const createSeries = async () => {
     if (!seriesForm.name.trim()) return;
   
+    const fields = {
+      name: seriesForm.name.trim(),
+      description: String(seriesForm.description || "").trim() || null,
+      universe_id: seriesForm.universe_id || null,
+    };
     try {
-      const { error: insertError } = await supabase.from("series").insert({
-        user_id: userId,
-        name: seriesForm.name.trim(),
-        description: seriesForm.description.trim() || null,
-        universe_id: seriesForm.universe_id || null,
-      });
-  
-      if (insertError) throw insertError;
+      const { data, error: saveError } = seriesForm.id
+        ? await supabase
+            .from("series")
+            .update(fields)
+            .eq("id", seriesForm.id)
+            .eq("user_id", userId)
+            .select()
+            .single()
+        : await supabase
+            .from("series")
+            .insert({ ...fields, user_id: userId })
+            .select()
+            .single();
+
+      if (saveError) throw saveError;
+      if (seriesForm.id) setSelectedSeries?.(data);
       setSeriesForm({ name: "", description: "", universe_id: "" });
       setModal("");
       await loadData(["series"]);
     } catch (e) {
-      notify("Couldn't create series", e.message);
+      notify(seriesForm.id ? "Couldn't save series" : "Couldn't create series", e.message);
     }
+  };
+
+  const deleteSeries = s => {
+    Alert.alert(
+      "Delete series?",
+      `"${s.name}" will be deleted. The books stay in your library.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            const { error: deleteError } = await supabase
+              .from("series")
+              .delete()
+              .eq("id", s.id)
+              .eq("user_id", userId);
+            if (deleteError) {
+              notify("Couldn't delete series", deleteError.message);
+              return;
+            }
+            setSelectedSeries?.(null);
+            notify("Series deleted", s.name);
+            await loadData(["series"]);
+          },
+        },
+      ]
+    );
   };
 
   const addExistingSeriesToUniverse = async seriesId => {
@@ -217,5 +346,5 @@ export function createCollectionsActions(deps) {
     }
   };
 
-  return { addCollection, addBookToCollection, removeBookFromCollection, addUniverse, createSeries, addExistingSeriesToUniverse, addBookToSeries, removeBookFromSeries, moveSeriesBook };
+  return { addCollection, addBookToCollection, removeBookFromCollection, addUniverse, createSeries, addExistingSeriesToUniverse, addBookToSeries, removeBookFromSeries, moveSeriesBook, deleteCollection, deleteSeries, deleteUniverse };
 }

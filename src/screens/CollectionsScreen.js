@@ -2,19 +2,20 @@ import { Pressable, Text, View } from "react-native";
 import { Image } from "../components/Image";
 
 import styles from "../styles";
-import { AppButton, Heading } from "../components/ui";
+import { AppButton, Cover, Heading } from "../components/ui";
 import LibraryBookshelf from "../Bookshelf";
 import { useFolio } from "../state/FolioContext";
-import { notify } from "../components/Toast";
 
 export default function CollectionsScreen() {
   const {
-    addBookToCollection,
     books,
+    collections,
+    deleteCollection,
+    deleteSeries,
+    deleteUniverse,
     collectionBooks,
     editions,
     moveSeriesBook,
-    removeBookFromCollection,
     removeBookFromSeries,
     selectedCollection,
     selectedSeries,
@@ -27,7 +28,9 @@ export default function CollectionsScreen() {
     setSelectedCollection,
     setSelectedSeries,
     setSelectedUniverse,
+    setCollectionForm,
     setSeriesForm,
+    setUniverseForm,
     universes,
   } = useFolio();
   if (selectedSeries) {
@@ -162,16 +165,29 @@ export default function CollectionsScreen() {
             </View>
           );
         })}
-       <AppButton
-  label="+ Add Book To Series"
-  compact
-  onPress={() =>
-    notify(
-      "Coming Soon",
-      "Book search for series is coming next."
-    )
-  }
-/>
+        {!links.length && (
+          <Text style={[styles.mutedText, { marginBottom: 12 }]}>
+            No books in this series yet. Add them, then use ↑ ↓ to set the reading order.
+          </Text>
+        )}
+        <View style={styles.detailActions}>
+          <AppButton label="+ Add books" compact onPress={() => setModal("addBooksToSeries")} />
+          <AppButton
+            label="Edit"
+            compact
+            secondary
+            onPress={() => {
+              setSeriesForm({
+                id: selectedSeries.id,
+                name: selectedSeries.name || "",
+                description: selectedSeries.description || "",
+                universe_id: selectedSeries.universe_id || "",
+              });
+              setModal("series");
+            }}
+          />
+          <AppButton label="Delete" compact danger onPress={() => deleteSeries(selectedSeries)} />
+        </View>
       </>
     );
   }
@@ -212,46 +228,31 @@ export default function CollectionsScreen() {
           subtitle={selectedCollection.description}
         />
 
+        <View style={styles.detailActions}>
+          <AppButton label="+ Add books" compact onPress={() => setModal("addBooksToCollection")} />
+          <AppButton
+            label="Edit"
+            compact
+            secondary
+            onPress={() => {
+              setCollectionForm({
+                id: selectedCollection.id,
+                name: selectedCollection.name || "",
+                description: selectedCollection.description || "",
+              });
+              setModal("collection");
+            }}
+          />
+          <AppButton label="Delete" compact danger onPress={() => deleteCollection(selectedCollection)} />
+        </View>
+
         <LibraryBookshelf
           items={items}
           onBookPress={setSelectedBook}
           seriesByBook={seriesByBook}
+          emptyTitle="No books here yet"
+          emptyMessage="Tap “+ Add books” to choose books from your library."
         />
-        <View style={styles.sectionDivider} />
-        <Text style={styles.sectionTitle}>Add books</Text>
-
-        {books
-          .filter(book => !links.some(link => link.book_id === book.id))
-          .map(book => (
-            <Pressable
-              key={book.id}
-              style={styles.simpleAddRow}
-              onPress={() =>
-                addBookToCollection(book.id, selectedCollection.id)
-              }
-            >
-              <Text style={styles.goldSmall}>＋</Text>
-              <Text style={styles.bodyText}>{book.title}</Text>
-            </Pressable>
-          ))}
-
-        <Text style={styles.sectionTitle}>Books in this collection</Text>
-        {links.map(link => {
-          const book = books.find(b => b.id === link.book_id);
-          if (!book) return null;
-
-          return (
-            <View key={link.id} style={styles.collectionAddRow}>
-              <Text style={styles.bodyText}>{book.title}</Text>
-              <AppButton
-                label="Remove"
-                compact
-                danger
-                onPress={() => removeBookFromCollection(link)}
-              />
-            </View>
-          );
-        })}
       </>
     );
   }
@@ -290,6 +291,23 @@ export default function CollectionsScreen() {
           </Pressable>
         ))}
 
+        <View style={styles.detailActions}>
+          <AppButton
+            label="Edit universe"
+            compact
+            secondary
+            onPress={() => {
+              setUniverseForm({
+                id: selectedUniverse.id,
+                name: selectedUniverse.name || "",
+                description: selectedUniverse.description || "",
+              });
+              setModal("universe");
+            }}
+          />
+          <AppButton label="Delete" compact danger onPress={() => deleteUniverse(selectedUniverse)} />
+        </View>
+
         <View style={styles.collectionActions}>
           <AppButton
             label="+ Add existing series"
@@ -316,11 +334,20 @@ export default function CollectionsScreen() {
     <>
       <Heading
         kicker="READING WORLDS"
-        title="Universes & Series"
-        subtitle="Explore connected books, universes, and reading order."
+        title="Collections & Series"
+        subtitle="Your curated shelves, series in reading order, and the universes they belong to."
       />
 
       <View style={styles.detailActions}>
+
+        <AppButton
+          label="+ Collection"
+          compact
+          onPress={() => {
+            setCollectionForm({ name: "", description: "" });
+            setModal("collection");
+          }}
+        />
 
         <AppButton
           label="+ Universe"
@@ -343,6 +370,53 @@ export default function CollectionsScreen() {
           }}
         />
       </View>
+
+      <View style={styles.sectionDivider} />
+      <Text style={styles.sectionKicker}>CURATED SHELVES</Text>
+      <Text style={styles.sectionTitle}>Collections</Text>
+
+      {!collections.length && (
+        <Text style={styles.mutedText}>
+          No collections yet. Tap “+ Collection” to make one (e.g. Signed editions, Favourites).
+        </Text>
+      )}
+
+      {[...collections]
+        .sort((a, b) => String(a.name).localeCompare(String(b.name)))
+        .map(collection => {
+          const ids = collectionBooks
+            .filter(row => row.collection_id === collection.id)
+            .map(row => row.book_id);
+          const covers = ids
+            .map(id => {
+              const b = books.find(x => x.id === id);
+              const ed = editions.find(e => e.book_id === id && e.cover_url);
+              return b ? { id, title: b.title, uri: ed?.cover_url || b.cover_url } : null;
+            })
+            .filter(Boolean)
+            .slice(0, 4);
+          return (
+            <Pressable
+              key={collection.id}
+              style={styles.featureCard}
+              onPress={() => setSelectedCollection(collection)}
+            >
+              <Text style={styles.featureCardKicker}>COLLECTION</Text>
+              <Text style={styles.featureCardTitle}>{collection.name}</Text>
+              <Text style={styles.mutedText}>
+                {ids.length} {ids.length === 1 ? "book" : "books"}
+              </Text>
+              {!!covers.length && (
+                <View style={{ flexDirection: "row", gap: 6, marginTop: 12 }}>
+                  {covers.map(c => (
+                    <Cover key={c.id} uri={c.uri} title={c.title} size="small" />
+                  ))}
+                </View>
+              )}
+              <Text style={styles.featureArrow}>↗</Text>
+            </Pressable>
+          );
+        })}
 
       <View style={styles.sectionDivider} />
       <Text style={styles.sectionKicker}>
@@ -385,7 +459,7 @@ export default function CollectionsScreen() {
       <Text style={styles.sectionKicker}>
         SERIES
       </Text>
-      <Text style={styles.sectionTitle}>series</Text>
+      <Text style={styles.sectionTitle}>Series</Text>
 
       {series
         .filter(s => !s.universe_id)

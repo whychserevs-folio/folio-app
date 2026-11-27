@@ -502,6 +502,9 @@ const {
   addBookToSeries,
   removeBookFromSeries,
   moveSeriesBook,
+  deleteCollection,
+  deleteSeries,
+  deleteUniverse,
 } = createCollectionsActions({
   collectionBooks,
   collectionForm,
@@ -511,6 +514,9 @@ const {
   seriesForm,
   setCollectionForm,
   setModal,
+  setSelectedCollection,
+  setSelectedSeries,
+  setSelectedUniverse,
   setSeriesForm,
   setUniverseForm,
   universeForm,
@@ -577,6 +583,9 @@ const closeModal = () => {
 
 // Everything screens and the app shell read or call (via useFolio()).
 return {
+  deleteCollection,
+  deleteSeries,
+  deleteUniverse,
   statCards,
   pickEditionCoverImage,
   removeMonthlyBook,
