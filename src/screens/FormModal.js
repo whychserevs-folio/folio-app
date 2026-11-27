@@ -24,6 +24,7 @@ export default function FormModal() {
     modal,
     monthlyBookForm,
     pickCoverImage,
+    pickEditionCoverImage,
     pickEdgeImage,
     pickPreorderCover,
     pickSpineImage,
@@ -223,7 +224,7 @@ export default function FormModal() {
         : "Add Edition Cover"
     }
     secondary
-    onPress={pickCoverImage}
+    onPress={pickEditionCoverImage}
     compact
   />
 

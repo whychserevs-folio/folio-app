@@ -101,6 +101,25 @@ export default function useFolioStore() {
     );
     return;
   }
+
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ["images"],
+    allowsEditing: true,
+    aspect: [2, 3],
+    quality: 0.8,
+  });
+
+  if (!result.canceled && result.assets?.length) {
+    setBookForm(p => ({
+      ...p,
+      cover_url: result.assets[0].uri,
+    }));
+  }
+};
+
+// Cover photo for one specific edition (e.g. a special edition), separate
+// from the book's main cover. Was accidentally nested inside pickCoverImage,
+// so the "Add Edition Cover" button set the book cover instead.
 const pickEditionCoverImage = async () => {
   const permission =
     await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -124,20 +143,6 @@ const pickEditionCoverImage = async () => {
     setBookForm(p => ({
       ...p,
       edition_cover_url: result.assets[0].uri,
-    }));
-  }
-};
-  const result = await ImagePicker.launchImageLibraryAsync({
-    mediaTypes: ["images"],
-    allowsEditing: true,
-    aspect: [2, 3],
-    quality: 0.8,
-  });
-
-  if (!result.canceled && result.assets?.length) {
-    setBookForm(p => ({
-      ...p,
-      cover_url: result.assets[0].uri,
     }));
   }
 };
@@ -1865,6 +1870,9 @@ const closeModal = () => {
 
 // Everything screens and the app shell read or call (via useFolio()).
 return {
+  pickEditionCoverImage,
+  removeMonthlyBook,
+  updateMonthlyBook,
   closeScanner,
   handleBarcodeScanned,
   pickProfileImage,
