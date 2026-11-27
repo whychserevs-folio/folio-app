@@ -35,7 +35,7 @@ export function createCollectionsActions(deps) {
       if (insertError) throw insertError;
       setCollectionForm({ name: "", description: "" });
       setModal("");
-      await loadData();
+      await loadData(["collections"]);
     } catch (e) {
       notify("Couldn't create collection", e.message);
     }
@@ -61,7 +61,7 @@ export function createCollectionsActions(deps) {
         });
   
       if (insertError) throw insertError;
-      await loadData();
+      await loadData(["collection_books"]);
     } catch (e) {
       notify("Couldn't add book", e.message);
     }
@@ -76,7 +76,7 @@ export function createCollectionsActions(deps) {
         .eq("user_id", userId);
   
       if (deleteError) throw deleteError;
-      await loadData();
+      await loadData(["collection_books"]);
     } catch (e) {
       notify("Couldn't remove book", e.message);
     }
@@ -95,7 +95,7 @@ export function createCollectionsActions(deps) {
       if (insertError) throw insertError;
       setUniverseForm({ name: "", description: "" });
       setModal("");
-      await loadData();
+      await loadData(["universes"]);
     } catch (e) {
       notify("Couldn't create universe", e.message);
     }
@@ -115,7 +115,7 @@ export function createCollectionsActions(deps) {
       if (insertError) throw insertError;
       setSeriesForm({ name: "", description: "", universe_id: "" });
       setModal("");
-      await loadData();
+      await loadData(["series"]);
     } catch (e) {
       notify("Couldn't create series", e.message);
     }
@@ -134,7 +134,7 @@ export function createCollectionsActions(deps) {
       if (updateError) throw updateError;
   
       setModal("");
-      await loadData();
+      await loadData(["series"]);
     } catch (e) {
       notify("Couldn't add series", e.message);
     }
@@ -165,7 +165,7 @@ export function createCollectionsActions(deps) {
         });
   
       if (insertError) throw insertError;
-      await loadData();
+      await loadData(["series_books"]);
     } catch (e) {
       notify("Couldn't add book to series", e.message);
     }
@@ -180,7 +180,7 @@ export function createCollectionsActions(deps) {
         .eq("user_id", userId);
   
       if (deleteError) throw deleteError;
-      await loadData();
+      await loadData(["series_books"]);
     } catch (e) {
       notify("Couldn't remove book", e.message);
     }
@@ -211,7 +211,7 @@ export function createCollectionsActions(deps) {
         if (updateError) throw updateError;
       }
   
-      await loadData();
+      await loadData(["series_books"]);
     } catch (e) {
       notify("Couldn't reorder series", e.message);
     }

@@ -243,72 +243,74 @@ const saveProfile = async () => {
   notify("Profile Saved");
   await loadProfile();
 };
-const loadData = useCallback(async () => {
+// Every table the app reads, with how to load it and where it goes.
+const TABLES = {
+  books: { setter: rows => setBooks(rows) },
+  editions: { setter: rows => setEditions(rows), order: "sort_order" },
+  physical_copies: { setter: rows => setPhysicalCopies(rows) },
+  tbr_books: { setter: rows => setTbrIds(rows.map(row => row.book_id)) },
+  dnf_books: { setter: rows => setDnfIds(rows.map(row => row.book_id)) },
+  preorders: { setter: rows => setPreorders(rows) },
+  collections: { setter: rows => setCollections(rows) },
+  collection_books: { setter: rows => setCollectionBooks(rows) },
+  universes: { setter: rows => setUniverses(rows) },
+  series: { setter: rows => setSeries(rows) },
+  series_books: { setter: rows => setSeriesBooks(rows) },
+  subscriptions: { setter: rows => setSubscriptions(rows) },
+  subscription_books: { setter: rows => setSubscriptionBooks(rows) },
+};
+
+// Deleting a parent row cascades in the database, so reloading a parent
+// also reloads the tables that hang off it.
+const CASCADES = {
+  books: ["editions", "physical_copies", "tbr_books", "dnf_books", "collection_books", "series_books"],
+  editions: ["physical_copies"],
+  collections: ["collection_books"],
+  series: ["series_books"],
+  universes: ["series", "series_books"],
+  subscriptions: ["subscription_books"],
+};
+
+// Load Folio data. With no argument, everything (first load, pull to
+// refresh). With a list, only those tables plus their cascades, which is
+// what actions pass after they write.
+const loadData = useCallback(async only => {
   if (!userId) return;
+
+  let names = Object.keys(TABLES);
+  if (Array.isArray(only) && only.length) {
+    const wanted = new Set();
+    const add = t => {
+      if (!TABLES[t] || wanted.has(t)) return;
+      wanted.add(t);
+      (CASCADES[t] || []).forEach(add);
+    };
+    only.forEach(add);
+    names = names.filter(t => wanted.has(t));
+  }
 
   setLoading(true);
   setError("");
 
   try {
-    const results = await Promise.all([
-      loadTable("books", q => q.eq("user_id", userId)),
-      loadTable(
-  "editions",
-  q => q
-    .eq("user_id", userId)
-    .order("sort_order")
-),
-      loadTable("physical_copies", q => q.eq("user_id", userId)),
-      loadTable("tbr_books", q => q.eq("user_id", userId)),
-      loadTable("dnf_books", q => q.eq("user_id", userId)),
-      loadTable("preorders", q => q.eq("user_id", userId)),
-      loadTable("collections", q => q.eq("user_id", userId)),
-      loadTable("collection_books", q => q.eq("user_id", userId)),
-      loadTable("universes", q => q.eq("user_id", userId)),
-      loadTable("series", q => q.eq("user_id", userId)),
-      loadTable("series_books", q => q.eq("user_id", userId)),
-      loadTable("subscriptions", q => q.eq("user_id", userId)),
-      loadTable("subscription_books", q => q.eq("user_id", userId)),
-    ]);
-
-    const [
-      bookRows,
-      editionRows,
-      copyRows,
-      tbrRows,
-      dnfRows,
-      preorderRows,
-      collectionRows,
-      collectionBookRows,
-      universeRows,
-      seriesRows,
-      seriesBookRows,
-      subscriptionRows,
-      subscriptionBookRows,
-    ] = results;
-
-    setBooks(bookRows);
-    setEditions(editionRows);
-    setPhysicalCopies(copyRows);
-    setTbrIds(tbrRows.map(row => row.book_id));
-    setDnfIds(dnfRows.map(row => row.book_id));
-    setPreorders(preorderRows);
-    setCollections(collectionRows);
-    setCollectionBooks(collectionBookRows);
-    setUniverses(universeRows);
-    setSeries(seriesRows);
-    setSeriesBooks(seriesBookRows);
-    setSubscriptions(subscriptionRows);
-setSubscriptionBooks(subscriptionBookRows);
-
-} catch (e) {
-  console.log("LOAD DATA ERROR:", e);
-  setError(e.message || "Unable to load Folio data.");
-} finally {
-  setLoading(false);
-  setLoadedForUser(userId);
-}
-
+    const results = await Promise.all(
+      names.map(t =>
+        loadTable(t, q => {
+          const scoped = q.eq("user_id", userId);
+          return TABLES[t].order ? scoped.order(TABLES[t].order) : scoped;
+        })
+      )
+    );
+    names.forEach((t, i) => TABLES[t].setter(results[i]));
+  } catch (e) {
+    console.log("LOAD DATA ERROR:", e);
+    setError(e.message || "Unable to load Folio data.");
+  } finally {
+    setLoading(false);
+    setLoadedForUser(userId);
+  }
+  // TABLES / CASCADES only use state setters, which never change.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [userId, loadTable]);
 
 useEffect(() => {

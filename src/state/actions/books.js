@@ -470,7 +470,7 @@ export function createBooksActions(deps) {
         });
   
       if (copyError) throw copyError;
-      await loadData();
+      await loadData(["physical_copies"]);
       notify("Copy added", "A new physical copy has been recorded.");
     } catch (e) {
       notify("Couldn't add copy", e.message);

@@ -110,7 +110,7 @@ export default function BookDetailScreen() {
               .eq("id", currentBook.id);
 
             setSelectedBook(null);
-            await loadData();
+            await loadData(["books"]);
           },
         },
       ]

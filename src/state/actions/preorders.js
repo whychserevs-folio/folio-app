@@ -115,7 +115,7 @@ export function createPreordersActions(deps) {
   
       setEditingPreorderId(null);
       setModal("");
-      await loadData();
+      await loadData(["preorders"]);
   
     } catch (e) {
       console.error("SAVE PREORDER ERROR:", e);
@@ -144,7 +144,7 @@ export function createPreordersActions(deps) {
               .eq("user_id", userId);
   
             if (updateError) notify("Couldn't update", updateError.message);
-            else await loadData();
+            else await loadData(["books","editions","physical_copies","preorders"]);
           },
         },
       ]);
@@ -166,7 +166,7 @@ export function createPreordersActions(deps) {
                 .eq("user_id", userId);
   
               if (updateError) notify("Couldn't update", updateError.message);
-              else await loadData();
+              else await loadData(["books","editions","physical_copies","preorders"]);
             },
           },
           {
@@ -186,7 +186,7 @@ export function createPreordersActions(deps) {
                 return;
               }
   
-              await loadData();
+              await loadData(["books","editions","physical_copies","preorders"]);
             },
           },
         ]

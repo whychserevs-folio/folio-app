@@ -69,7 +69,7 @@ export function createSubscriptionsActions(deps) {
         status: "Active",
         notes: "",
       });
-      await loadData();
+      await loadData(["subscriptions"]);
     } catch (e) {
       notify("Couldn't save subscription", e.message);
     } finally {
@@ -114,7 +114,7 @@ export function createSubscriptionsActions(deps) {
             if (deleteError) notify("Couldn't delete", deleteError.message);
             else {
               setSelectedSubscription(null);
-              await loadData();
+              await loadData(["subscriptions"]);
             }
           },
         },
@@ -154,7 +154,7 @@ export function createSubscriptionsActions(deps) {
       if (insertError) throw insertError;
   
       setModal("");
-      await loadData();
+      await loadData(["subscription_books"]);
     } catch (e) {
       notify("Couldn't add monthly book", e.message);
     }
@@ -180,7 +180,7 @@ export function createSubscriptionsActions(deps) {
                 .eq("user_id", userId);
   
               if (updateError) notify("Couldn't update", updateError.message);
-              else await loadData();
+              else await loadData(["books","editions","physical_copies","subscription_books"]);
             },
           },
           {
@@ -201,7 +201,7 @@ export function createSubscriptionsActions(deps) {
                 .eq("user_id", userId);
   
               if (updateError) notify("Couldn't update", updateError.message);
-              else await loadData();
+              else await loadData(["books","editions","physical_copies","subscription_books"]);
             },
           },
         ]
@@ -221,7 +221,7 @@ export function createSubscriptionsActions(deps) {
             .eq("user_id", userId);
   
           if (updateError) notify("Couldn't update", updateError.message);
-          else await loadData();
+          else await loadData(["books","editions","physical_copies","subscription_books"]);
         },
       },
     ]);
@@ -241,7 +241,7 @@ export function createSubscriptionsActions(deps) {
             .eq("user_id", userId);
   
           if (deleteError) notify("Couldn't remove", deleteError.message);
-          else await loadData();
+          else await loadData(["subscription_books"]);
         },
       },
     ]);
