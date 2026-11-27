@@ -212,16 +212,16 @@ export default function AuthScreen({ onSignedIn }) {
     setBusy(true);
 
     try {
-      const { data: existing, error: lookupError } =
-        await supabase
-          .from('profiles')
-          .select('id')
-          .ilike('username', cleanUsername)
-          .limit(1);
+      // Ask the database (RLS hides other users' profiles, so a direct
+      // lookup could never find a clash).
+      const { data: available, error: lookupError } = await supabase.rpc(
+        'username_available',
+        { p_username: cleanUsername }
+      );
 
       if (lookupError) throw lookupError;
 
-      if (existing?.length) {
+      if (available === false) {
         Alert.alert(
           'Username taken',
           'Please choose another username.'
