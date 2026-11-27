@@ -8,10 +8,10 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
 } from 'react-native';
 import * as Linking from 'expo-linking';
 import { supabase } from './supabase';
+import { notify } from "./components/Toast";
 
 const C = {
   bg: '#09090B',
@@ -151,7 +151,7 @@ export default function AuthScreen({ onSignedIn }) {
         }
       } catch (error) {
         if (isMounted) {
-          Alert.alert(
+          notify(
             'Reset link problem',
             'This password-reset link could not be opened. Please request a new one.'
           );
@@ -178,7 +178,7 @@ export default function AuthScreen({ onSignedIn }) {
     const cleanUsername = username.trim();
 
     if (!/^[A-Za-z0-9_]{3,20}$/.test(cleanUsername)) {
-      Alert.alert(
+      notify(
         'Check your username',
         'Use 3–20 letters, numbers or underscores. No @ symbol.'
       );
@@ -186,7 +186,7 @@ export default function AuthScreen({ onSignedIn }) {
     }
 
     if (!email.trim() || !email.includes('@')) {
-      Alert.alert(
+      notify(
         'Check your email',
         'Please enter a valid email address.'
       );
@@ -194,7 +194,7 @@ export default function AuthScreen({ onSignedIn }) {
     }
 
     if (password.length < 8) {
-      Alert.alert(
+      notify(
         'Password too short',
         'Your password must be at least 8 characters.'
       );
@@ -202,7 +202,7 @@ export default function AuthScreen({ onSignedIn }) {
     }
 
     if (password !== confirmPassword) {
-      Alert.alert(
+      notify(
         'Passwords do not match',
         'Please check both password fields.'
       );
@@ -212,17 +212,17 @@ export default function AuthScreen({ onSignedIn }) {
     setBusy(true);
 
     try {
-      const { data: existing, error: lookupError } =
-        await supabase
-          .from('profiles')
-          .select('id')
-          .ilike('username', cleanUsername)
-          .limit(1);
+      // Ask the database (RLS hides other users' profiles, so a direct
+      // lookup could never find a clash).
+      const { data: available, error: lookupError } = await supabase.rpc(
+        'username_available',
+        { p_username: cleanUsername }
+      );
 
       if (lookupError) throw lookupError;
 
-      if (existing?.length) {
-        Alert.alert(
+      if (available === false) {
+        notify(
           'Username taken',
           'Please choose another username.'
         );
@@ -244,14 +244,14 @@ export default function AuthScreen({ onSignedIn }) {
       if (data.session) {
         onSignedIn?.();
       } else {
-        Alert.alert(
+        notify(
           'Check your email',
           'We have sent you a confirmation link. Please confirm your email before logging in.'
         );
         setScreen('login');
       }
     } catch (error) {
-      Alert.alert('Sign-up unsuccessful', error.message);
+      notify('Sign-up unsuccessful', error.message);
     } finally {
       setBusy(false);
     }
@@ -259,7 +259,7 @@ export default function AuthScreen({ onSignedIn }) {
 
   async function logIn() {
     if (!email.trim() || !password) {
-      Alert.alert(
+      notify(
         'Missing details',
         'Please enter your email and password.'
       );
@@ -279,7 +279,7 @@ export default function AuthScreen({ onSignedIn }) {
 
       onSignedIn?.();
     } catch (error) {
-      Alert.alert('Login unsuccessful', error.message);
+      notify('Login unsuccessful', error.message);
     } finally {
       setBusy(false);
     }
@@ -289,7 +289,7 @@ export default function AuthScreen({ onSignedIn }) {
     const cleanEmail = email.trim().toLowerCase();
 
     if (!cleanEmail || !cleanEmail.includes('@')) {
-      Alert.alert(
+      notify(
         'Check your email',
         'Please enter the email address associated with your Folio account.'
       );
@@ -309,14 +309,14 @@ export default function AuthScreen({ onSignedIn }) {
 
       if (error) throw error;
 
-      Alert.alert(
+      notify(
         'Check your inbox',
         'If an account exists for this email address, Supabase will send you a password-reset email. Follow the link in that email to continue.'
       );
 
       setScreen('login');
     } catch (error) {
-      Alert.alert(
+      notify(
         'Password reset unsuccessful',
         error.message
       );
@@ -327,7 +327,7 @@ export default function AuthScreen({ onSignedIn }) {
 
   async function updatePassword() {
     if (password.length < 8) {
-      Alert.alert(
+      notify(
         'Password too short',
         'Your new password must be at least 8 characters.'
       );
@@ -335,7 +335,7 @@ export default function AuthScreen({ onSignedIn }) {
     }
 
     if (password !== confirmPassword) {
-      Alert.alert(
+      notify(
         'Passwords do not match',
         'Please check both password fields.'
       );
@@ -351,7 +351,7 @@ export default function AuthScreen({ onSignedIn }) {
 
       if (error) throw error;
 
-      Alert.alert(
+      notify(
         'Password updated',
         'Your password has been changed successfully. You can now log in with your new password.'
       );
@@ -363,7 +363,7 @@ export default function AuthScreen({ onSignedIn }) {
 
       setScreen('login');
     } catch (error) {
-      Alert.alert(
+      notify(
         'Password update unsuccessful',
         error.message
       );
