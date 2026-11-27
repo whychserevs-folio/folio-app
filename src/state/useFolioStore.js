@@ -18,6 +18,7 @@ import { createCollectionsActions } from "./actions/collections";
 import { createPreordersActions } from "./actions/preorders";
 import { createSubscriptionsActions } from "./actions/subscriptions";
 import { computeStats } from "./stats";
+import useSpineColors from "./useSpineColors";
 
 // All Folio state, data loading and actions. App.js renders the UI and
 // passes this object to every screen through FolioContext.
@@ -563,6 +564,9 @@ const { outstandingPreorders, totalPreorderSpend, stats, statCards } = computeSt
   subscriptions,
   tbrIds,
 });
+
+// Work out cover-matched colours for generated spines in the background.
+useSpineColors({ userId, books, editions, setEditions });
 
 const closeModal = () => {
   setModal("");

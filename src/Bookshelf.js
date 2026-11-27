@@ -15,6 +15,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { Image } from "./components/Image";
+import { isReadableAccent } from "./utils/coverColors";
 import {
   GestureDetector,
   usePanGesture,
@@ -150,6 +151,15 @@ const SERIF = Platform.select({
   default: "Georgia, 'Times New Roman', serif",
 });
 
+// Colours extracted from this book's current cover (see useSpineColors), or
+// null while they are still being worked out / when the cover can't be read.
+function matchedColours(item, cover) {
+  const c = item.editionRecord?.spine_colors;
+  if (!c || !cover || c.src !== cover || !c.bg) return null;
+  const title = c.accent && isReadableAccent(c.accent, c.bg) ? c.accent : c.text;
+  return { bg: c.bg, title, text: c.text };
+}
+
 function SpineArt({ cover }) {
   return cover ? (
     <Image source={{ uri: cover }} contentFit="fill" blurRadius={COLOUR_BLUR} style={styles.spineArt} />
@@ -163,29 +173,46 @@ function GeneratedSpine({ item, cover, w, h }) {
   // long titles take the whole spine (as on many real books)
   const showAuthor = !!surname && title.length + surname.length <= 17;
   const len = h - 20; // label runs between head and tail
+  const m = matchedColours(item, cover);
   return (
-    <View style={[styles.genBook, { width: w, height: h, backgroundColor: placeholderColour(item) }]}>
-      <SpineArt cover={cover} />
-      <View style={styles.genTint} />
+    <View style={[styles.genBook, { width: w, height: h, backgroundColor: m ? m.bg : placeholderColour(item) }]}>
+      {!m && <SpineArt cover={cover} />}
+      {!m && <View style={styles.genTint} />}
       <View style={[styles.strip, { left: 0, width: 1.5, backgroundColor: "rgba(255,255,255,0.24)" }]} />
       <View style={[styles.strip, { left: 1.5, width: Math.round(w * 0.24), backgroundColor: "rgba(255,255,255,0.07)" }]} />
       <View style={[styles.strip, { right: 0, width: Math.round(w * 0.3), backgroundColor: "rgba(0,0,0,0.2)" }]} />
       <View style={[styles.strip, { right: 0, width: 2, backgroundColor: "rgba(0,0,0,0.38)" }]} />
       <View style={[styles.band, { top: 0, height: 3 }]} />
       <View style={[styles.band, { bottom: 0, height: 4 }]} />
-      {/* darker title panel: keeps the title readable on light covers */}
-      <View style={styles.spinePanel} />
+      {m ? (
+        <>
+          {/* printed head/tail bands in the title colour */}
+          <View style={[styles.printBand, { top: 7, backgroundColor: m.title }]} />
+          <View style={[styles.printBand, { bottom: 8, backgroundColor: m.title }]} />
+        </>
+      ) : (
+        // darker title panel: keeps the title readable on light covers
+        <View style={styles.spinePanel} />
+      )}
       <View
         style={[
           styles.spineLabel,
           { width: len, height: w, left: (w - len) / 2, top: (h - w) / 2 },
         ]}
       >
-        <Text numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.7} style={styles.spineTitle}>
+        <Text
+          numberOfLines={2}
+          adjustsFontSizeToFit
+          minimumFontScale={0.7}
+          style={[styles.spineTitle, m && { color: m.title, textShadowColor: "transparent" }]}
+        >
           {title}
         </Text>
         {showAuthor && (
-          <Text numberOfLines={1} style={styles.spineAuthor}>
+          <Text
+            numberOfLines={1}
+            style={[styles.spineAuthor, m && { color: m.text, textShadowColor: "transparent" }]}
+          >
             {surname}
           </Text>
         )}
@@ -203,33 +230,44 @@ function GeneratedLying({ item, cover, h }) {
   const title = getTitle(item).toUpperCase();
   const surname = getAuthorSurname(item).toUpperCase();
   const showAuthor = !!surname && title.length + surname.length <= 10;
+  const m = matchedColours(item, cover);
   return (
     <View
       style={[
         styles.genBook,
-        { width: len, height: h, marginLeft: (90 - len) / 2 + shift, backgroundColor: placeholderColour(item) },
+        { width: len, height: h, marginLeft: (90 - len) / 2 + shift, backgroundColor: m ? m.bg : placeholderColour(item) },
       ]}
     >
-      <SpineArt cover={cover} />
-      <View style={styles.genTint} />
+      {!m && <SpineArt cover={cover} />}
+      {!m && <View style={styles.genTint} />}
       <View style={[styles.stripH, { top: 0, height: 1.5, backgroundColor: "rgba(255,255,255,0.24)" }]} />
       <View style={[styles.stripH, { top: 1.5, height: Math.round(h * 0.25), backgroundColor: "rgba(255,255,255,0.07)" }]} />
       <View style={[styles.stripH, { bottom: 0, height: Math.round(h * 0.3), backgroundColor: "rgba(0,0,0,0.2)" }]} />
       <View style={[styles.stripH, { bottom: 0, height: 2, backgroundColor: "rgba(0,0,0,0.38)" }]} />
       <View style={[styles.bandV, { left: 0 }]} />
       <View style={[styles.bandV, { right: 0 }]} />
-      <View style={styles.lyingPanel} />
+      {m ? (
+        <>
+          <View style={[styles.printBandV, { left: 6, backgroundColor: m.title }]} />
+          <View style={[styles.printBandV, { right: 6, backgroundColor: m.title }]} />
+        </>
+      ) : (
+        <View style={styles.lyingPanel} />
+      )}
       <View style={styles.lyingLabel}>
         <Text
           numberOfLines={title.includes(" ") ? 2 : 1}
           adjustsFontSizeToFit
           minimumFontScale={0.6}
-          style={styles.lyingTitle}
+          style={[styles.lyingTitle, m && { color: m.title, textShadowColor: "transparent" }]}
         >
           {title}
         </Text>
         {showAuthor && (
-          <Text numberOfLines={1} style={styles.lyingAuthor}>
+          <Text
+            numberOfLines={1}
+            style={[styles.lyingAuthor, m && { color: m.text, textShadowColor: "transparent" }]}
+          >
             {surname}
           </Text>
         )}
@@ -816,6 +854,21 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: 3,
     backgroundColor: "rgba(0,0,0,0.28)",
+  },
+  // thin printed bands at the head/tail of a cover-matched spine
+  printBand: {
+    position: "absolute",
+    left: 4,
+    right: 5,
+    height: 1.5,
+    opacity: 0.7,
+  },
+  printBandV: {
+    position: "absolute",
+    top: 4,
+    bottom: 4,
+    width: 1.5,
+    opacity: 0.7,
   },
   spinePanel: {
     position: "absolute",
