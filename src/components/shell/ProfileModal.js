@@ -4,6 +4,7 @@ import { supabase } from "../../supabase";
 import styles from "../../styles";
 import { AppButton, Chip, Field } from "../ui";
 import { useFolio } from "../../state/FolioContext";
+import { ToastHost } from "../Toast";
 
 export default function ProfileModal() {
   const {
@@ -187,6 +188,7 @@ export default function ProfileModal() {
           </ScrollView>
         </View>
       </View>
+      <ToastHost />
     </Modal>
   );
 }

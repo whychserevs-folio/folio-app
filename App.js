@@ -31,6 +31,7 @@ import TopBar from "./src/components/shell/TopBar";
 import TabBar from "./src/components/shell/TabBar";
 import ScannerModal from "./src/components/shell/ScannerModal";
 import ProfileModal from "./src/components/shell/ProfileModal";
+import { ToastHost } from "./src/components/Toast";
 
 export default function App() {
   const folio = useFolioStore();
@@ -153,6 +154,7 @@ return (
           </ScrollView>
         </View>
       </KeyboardAvoidingView>
+      <ToastHost />
     </Modal>
   </SafeAreaView>
    </GestureHandlerRootView>

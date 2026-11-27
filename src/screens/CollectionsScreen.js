@@ -1,9 +1,10 @@
-import { Alert, Image, Pressable, Text, View } from "react-native";
+import { Image, Pressable, Text, View } from "react-native";
 
 import styles from "../styles";
 import { AppButton, Heading } from "../components/ui";
 import LibraryBookshelf from "../Bookshelf";
 import { useFolio } from "../state/FolioContext";
+import { notify } from "../components/Toast";
 
 export default function CollectionsScreen() {
   const {
@@ -164,7 +165,7 @@ export default function CollectionsScreen() {
   label="+ Add Book To Series"
   compact
   onPress={() =>
-    Alert.alert(
+    notify(
       "Coming Soon",
       "Book search for series is coming next."
     )

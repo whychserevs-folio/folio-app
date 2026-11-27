@@ -20,6 +20,7 @@ import {
   num,
   bookId,
 } from "../utils/format";
+import { notify } from "../components/Toast";
 
 // All Folio state, data loading and actions. App.js renders the UI and
 // passes this object to every screen through FolioContext.
@@ -94,7 +95,7 @@ export default function useFolioStore() {
     await ImagePicker.requestMediaLibraryPermissionsAsync();
 
   if (!permission.granted) {
-    Alert.alert(
+    notify(
       "Permission needed",
       "Please allow Folio to access your photos."
     );
@@ -105,7 +106,7 @@ const pickEditionCoverImage = async () => {
     await ImagePicker.requestMediaLibraryPermissionsAsync();
 
   if (!permission.granted) {
-    Alert.alert(
+    notify(
       "Permission needed",
       "Please allow Folio to access your photos."
     );
@@ -147,7 +148,7 @@ const pickProfileImage = async () => {
     await ImagePicker.requestMediaLibraryPermissionsAsync();
 
   if (!permission.granted) {
-    Alert.alert(
+    notify(
       "Permission needed",
       "Please allow Folio to access your photos."
     );
@@ -181,7 +182,7 @@ const pickSpineImage = async () => {
     await ImagePicker.requestMediaLibraryPermissionsAsync();
 
   if (!permission.granted) {
-    Alert.alert(
+    notify(
       "Permission needed",
       "Please allow Folio to access your photos."
     );
@@ -207,7 +208,7 @@ const pickEdgeImage = async () => {
     await ImagePicker.requestMediaLibraryPermissionsAsync();
 
   if (!permission.granted) {
-    Alert.alert(
+    notify(
       "Permission needed",
       "Please allow Folio to access your photos."
     );
@@ -318,7 +319,7 @@ const scanBarcode = async () => {
   if (!cameraPermission?.granted) {
     const permission = await requestCameraPermission();
     if (!permission.granted) {
-      Alert.alert(
+      notify(
         "Camera permission needed",
         "Please allow Folio to use the camera so it can scan ISBN barcodes."
       );
@@ -335,7 +336,7 @@ const handleBarcodeScanned = async ({ data, type }) => {
 
   const isbn = String(data).replace(/[^0-9Xx]/g, "");
   if (isbn.length !== 10 && isbn.length !== 13) {
-    Alert.alert("Not an ISBN", `The scanned barcode (${type || "barcode"}) is not an ISBN.`);
+    notify("Not an ISBN", `The scanned barcode (${type || "barcode"}) is not an ISBN.`);
     return;
   }
 
@@ -449,11 +450,11 @@ const saveProfile = async () => {
     .eq("id", userId);
 
   if (error) {
-    Alert.alert("Error", error.message);
+    notify("Error", error.message);
     return;
   }
 
-  Alert.alert("Profile Saved");
+  notify("Profile Saved");
   await loadProfile();
 };
 const loadData = useCallback(async () => {
@@ -603,7 +604,7 @@ const reorderLibrary = useCallback(
     });
 
     if (error) {
-      Alert.alert("Could not save shelf order", error.message);
+      notify("Could not save shelf order", error.message);
       loadData();
     }
   },
@@ -737,7 +738,7 @@ const findBook = async (isbnOverride = "") => {
         "&author=" +
         encodeURIComponent(bookForm.author || "");
     } else {
-      Alert.alert(
+      notify(
         "Search required",
         "Enter an ISBN or a title."
       );
@@ -754,7 +755,7 @@ const findBook = async (isbnOverride = "") => {
       const text = await response.text();
       console.log("OPENLIBRARY ERROR:", text);
 
-      Alert.alert(
+      notify(
         "Book Lookup Failed",
         `Open Library returned ${response.status}`
       );
@@ -767,7 +768,7 @@ const findBook = async (isbnOverride = "") => {
     console.log(JSON.stringify(data, null, 2));
 
     if (!data.docs?.length) {
-      Alert.alert("Book not found");
+      notify("Book not found");
       return;
     }
 
@@ -835,7 +836,7 @@ const findBook = async (isbnOverride = "") => {
   } catch (error) {
     console.error("FIND BOOK ERROR:", error);
 
-    Alert.alert(
+    notify(
       "Find Book Error",
       String(error)
     );
@@ -845,7 +846,7 @@ const findBook = async (isbnOverride = "") => {
 };
 const saveBook = async () => {
   if (!String(bookForm.title || "").trim()) {
-    Alert.alert("Title required", "Please enter a book title.");
+    notify("Title required", "Please enter a book title.");
     return;
   }
 
@@ -975,7 +976,7 @@ const saveBook = async () => {
     await toggleBookListAfterSave(bookData.id, "TBR", wantsTbr);
     await toggleBookListAfterSave(bookData.id, "DNF", wantsDnf);
 
-    Alert.alert(
+    notify(
       "Saved",
       `"${String(bookForm.title || "").trim()}" has been saved to your library.`
     );
@@ -987,7 +988,7 @@ const saveBook = async () => {
     await loadData();
   } catch (e) {
     console.error("SAVE BOOK ERROR", e);
-    Alert.alert("Couldn't save book", e?.message || String(e));
+    notify("Couldn't save book", e?.message || String(e));
   } finally {
     setSaving(false);
   }
@@ -1055,9 +1056,9 @@ const addPhysicalCopy = async edition => {
 
     if (copyError) throw copyError;
     await loadData();
-    Alert.alert("Copy added", "A new physical copy has been recorded.");
+    notify("Copy added", "A new physical copy has been recorded.");
   } catch (e) {
-    Alert.alert("Couldn't add copy", e.message);
+    notify("Couldn't add copy", e.message);
   }
 };
 
@@ -1079,7 +1080,7 @@ const toggleList = async (id, list) => {
     if (changeError) throw changeError;
     await loadData();
   } catch (e) {
-    Alert.alert("Couldn't update list", e.message);
+    notify("Couldn't update list", e.message);
   }
 };
 
@@ -1101,7 +1102,7 @@ const addCollection = async () => {
     setModal("");
     await loadData();
   } catch (e) {
-    Alert.alert("Couldn't create collection", e.message);
+    notify("Couldn't create collection", e.message);
   }
 };
 
@@ -1111,7 +1112,7 @@ const addBookToCollection = async (id, collectionId) => {
       row => row.book_id === id && row.collection_id === collectionId
     )
   ) {
-    Alert.alert("Already in collection", "This book is already here.");
+    notify("Already in collection", "This book is already here.");
     return;
   }
 
@@ -1127,7 +1128,7 @@ const addBookToCollection = async (id, collectionId) => {
     if (insertError) throw insertError;
     await loadData();
   } catch (e) {
-    Alert.alert("Couldn't add book", e.message);
+    notify("Couldn't add book", e.message);
   }
 };
 
@@ -1142,7 +1143,7 @@ const removeBookFromCollection = async row => {
     if (deleteError) throw deleteError;
     await loadData();
   } catch (e) {
-    Alert.alert("Couldn't remove book", e.message);
+    notify("Couldn't remove book", e.message);
   }
 };
 
@@ -1161,7 +1162,7 @@ const addUniverse = async () => {
     setModal("");
     await loadData();
   } catch (e) {
-    Alert.alert("Couldn't create universe", e.message);
+    notify("Couldn't create universe", e.message);
   }
 };
 
@@ -1181,7 +1182,7 @@ const createSeries = async () => {
     setModal("");
     await loadData();
   } catch (e) {
-    Alert.alert("Couldn't create series", e.message);
+    notify("Couldn't create series", e.message);
   }
 };
 
@@ -1200,7 +1201,7 @@ const addExistingSeriesToUniverse = async seriesId => {
     setModal("");
     await loadData();
   } catch (e) {
-    Alert.alert("Couldn't add series", e.message);
+    notify("Couldn't add series", e.message);
   }
 };
 
@@ -1210,7 +1211,7 @@ const addBookToSeries = async (id, seriesId) => {
       row => row.book_id === id && row.series_id === seriesId
     )
   ) {
-    Alert.alert("Already in series", "This book is already in this series.");
+    notify("Already in series", "This book is already in this series.");
     return;
   }
 
@@ -1231,7 +1232,7 @@ const addBookToSeries = async (id, seriesId) => {
     if (insertError) throw insertError;
     await loadData();
   } catch (e) {
-    Alert.alert("Couldn't add book to series", e.message);
+    notify("Couldn't add book to series", e.message);
   }
 };
 
@@ -1246,7 +1247,7 @@ const removeBookFromSeries = async row => {
     if (deleteError) throw deleteError;
     await loadData();
   } catch (e) {
-    Alert.alert("Couldn't remove book", e.message);
+    notify("Couldn't remove book", e.message);
   }
 };
 
@@ -1277,21 +1278,21 @@ const moveSeriesBook = async (link, direction) => {
 
     await loadData();
   } catch (e) {
-    Alert.alert("Couldn't reorder series", e.message);
+    notify("Couldn't reorder series", e.message);
   }
 };
 
 const savePreorder = async () => {
   console.log("SAVE PREORDER STARTED");
   if (!String(preForm.title || "").trim()) {
-    Alert.alert("Title required", "Enter the book title.");
+    notify("Title required", "Enter the book title.");
     return;
   }
 
   const orderDate = isoDate(preForm.order_date);
 
   if (preForm.order_date && !orderDate) {
-    Alert.alert("Invalid date", "Use DD/MM/YYYY for the order date.");
+    notify("Invalid date", "Use DD/MM/YYYY for the order date.");
     return;
   }
 
@@ -1303,7 +1304,7 @@ const savePreorder = async () => {
     (year !== null && (year < 2000 || year > 2200)) ||
     (!!month !== !!year)
   ) {
-    Alert.alert(
+    notify(
       "Check expected shipping date",
       "Enter both a valid month and year, or leave both blank."
     );
@@ -1382,7 +1383,7 @@ console.log("FINAL COVER URL:", coverUrl);
   } catch (e) {
     console.error("SAVE PREORDER ERROR:", e);
 
-    Alert.alert(
+    notify(
       "Couldn't save pre-order",
       e?.message || String(e)
     );
@@ -1396,7 +1397,7 @@ const pickPreorderCover = async () => {
     await ImagePicker.requestMediaLibraryPermissionsAsync();
 
   if (!permission.granted) {
-    Alert.alert(
+    notify(
       "Permission needed",
       "Please allow Folio to access your photos."
     );
@@ -1482,7 +1483,7 @@ const addReceivedBookToLibrary = async item => {
     if (copyError) throw copyError;
     return true;
   } catch (e) {
-    Alert.alert("Couldn't add book to library", e.message);
+    notify("Couldn't add book to library", e.message);
     return false;
   }
 };
@@ -1500,7 +1501,7 @@ const advancePreorder = preorder => {
             .eq("id", preorder.id)
             .eq("user_id", userId);
 
-          if (updateError) Alert.alert("Couldn't update", updateError.message);
+          if (updateError) notify("Couldn't update", updateError.message);
           else await loadData();
         },
       },
@@ -1522,7 +1523,7 @@ const advancePreorder = preorder => {
               .eq("id", preorder.id)
               .eq("user_id", userId);
 
-            if (updateError) Alert.alert("Couldn't update", updateError.message);
+            if (updateError) notify("Couldn't update", updateError.message);
             else await loadData();
           },
         },
@@ -1539,7 +1540,7 @@ const advancePreorder = preorder => {
               .eq("user_id", userId);
 
             if (updateError) {
-              Alert.alert("Couldn't update pre-order", updateError.message);
+              notify("Couldn't update pre-order", updateError.message);
               return;
             }
 
@@ -1553,7 +1554,7 @@ const advancePreorder = preorder => {
 
 const saveSubscription = async () => {
   if (!String(subscriptionForm.name || "").trim()) {
-    Alert.alert("Name required", "Enter a subscription name.");
+    notify("Name required", "Enter a subscription name.");
     return;
   }
 
@@ -1599,7 +1600,7 @@ const saveSubscription = async () => {
     });
     await loadData();
   } catch (e) {
-    Alert.alert("Couldn't save subscription", e.message);
+    notify("Couldn't save subscription", e.message);
   } finally {
     setSaving(false);
   }
@@ -1639,7 +1640,7 @@ const deleteSubscription = item => {
             .eq("id", item.id)
             .eq("user_id", userId);
 
-          if (deleteError) Alert.alert("Couldn't delete", deleteError.message);
+          if (deleteError) notify("Couldn't delete", deleteError.message);
           else {
             setSelectedSubscription(null);
             await loadData();
@@ -1652,7 +1653,7 @@ const deleteSubscription = item => {
 
 const addMonthlyBook = async () => {
   if (!selectedSubscription || !monthlyBookForm.title.trim()) {
-    Alert.alert("Title required", "Enter the monthly book title.");
+    notify("Title required", "Enter the monthly book title.");
     return;
   }
 
@@ -1660,7 +1661,7 @@ const addMonthlyBook = async () => {
   const year = num(monthlyBookForm.year);
 
   if (!month || month < 1 || month > 12 || !year || year < 2000) {
-    Alert.alert("Invalid month or year", "Please check the month and year.");
+    notify("Invalid month or year", "Please check the month and year.");
     return;
   }
 
@@ -1684,7 +1685,7 @@ const addMonthlyBook = async () => {
     setModal("");
     await loadData();
   } catch (e) {
-    Alert.alert("Couldn't add monthly book", e.message);
+    notify("Couldn't add monthly book", e.message);
   }
 };
 
@@ -1707,7 +1708,7 @@ const updateMonthlyBook = item => {
               .eq("id", item.id)
               .eq("user_id", userId);
 
-            if (updateError) Alert.alert("Couldn't update", updateError.message);
+            if (updateError) notify("Couldn't update", updateError.message);
             else await loadData();
           },
         },
@@ -1728,7 +1729,7 @@ const updateMonthlyBook = item => {
               .eq("id", item.id)
               .eq("user_id", userId);
 
-            if (updateError) Alert.alert("Couldn't update", updateError.message);
+            if (updateError) notify("Couldn't update", updateError.message);
             else await loadData();
           },
         },
@@ -1748,7 +1749,7 @@ const updateMonthlyBook = item => {
           .eq("id", item.id)
           .eq("user_id", userId);
 
-        if (updateError) Alert.alert("Couldn't update", updateError.message);
+        if (updateError) notify("Couldn't update", updateError.message);
         else await loadData();
       },
     },
@@ -1768,7 +1769,7 @@ const removeMonthlyBook = item => {
           .eq("id", item.id)
           .eq("user_id", userId);
 
-        if (deleteError) Alert.alert("Couldn't remove", deleteError.message);
+        if (deleteError) notify("Couldn't remove", deleteError.message);
         else await loadData();
       },
     },
