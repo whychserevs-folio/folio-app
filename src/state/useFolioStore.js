@@ -554,7 +554,8 @@ const {
   userId,
 });
 
-const { outstandingPreorders, totalPreorderSpend, stats } = computeStats({
+const { outstandingPreorders, totalPreorderSpend, stats, statCards } = computeStats({
+  physicalCopies,
   books,
   dnfIds,
   editions,
@@ -572,6 +573,7 @@ const closeModal = () => {
 
 // Everything screens and the app shell read or call (via useFolio()).
 return {
+  statCards,
   pickEditionCoverImage,
   removeMonthlyBook,
   updateMonthlyBook,
