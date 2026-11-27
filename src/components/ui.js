@@ -1,6 +1,6 @@
 // Shared presentational components.
 import { Pressable, Text, TextInput, View } from "react-native";
-import { Image } from "expo-image";
+import { Image } from "./Image";
 
 import styles from "../styles";
 import { C } from "../theme";

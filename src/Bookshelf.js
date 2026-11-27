@@ -14,7 +14,7 @@ import {
   Platform,
   useWindowDimensions,
 } from "react-native";
-import { Image } from "expo-image";
+import { Image } from "./components/Image";
 import {
   GestureDetector,
   usePanGesture,
@@ -108,9 +108,14 @@ function placeholderColour(item) {
 const haptic = kind => {
   if (Platform.OS === "web") return;
   try {
-    if (kind === "lift") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    else if (kind === "drop") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    else Haptics.selectionAsync();
+    // Older app builds without expo-haptics reject here; ignore quietly.
+    const done =
+      kind === "lift"
+        ? Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+        : kind === "drop"
+        ? Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+        : Haptics.selectionAsync();
+    done?.catch?.(() => {});
   } catch {
     // haptics are a nicety; never let them break a drag
   }

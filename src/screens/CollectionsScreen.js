@@ -1,5 +1,5 @@
 import { Pressable, Text, View } from "react-native";
-import { Image } from "expo-image";
+import { Image } from "../components/Image";
 
 import styles from "../styles";
 import { AppButton, Heading } from "../components/ui";
