@@ -7,6 +7,7 @@ import { useFolio } from "../state/FolioContext";
 
 export default function LibraryScreen() {
   const {
+    mainScroll,
     reorderLibrary,
     search,
     seriesByBook,
@@ -36,6 +37,7 @@ export default function LibraryScreen() {
       seriesByBook={seriesByBook}
       // Only the full, unfiltered library has a complete order to save.
       onReorder={search.trim() ? undefined : reorderLibrary}
+      scrollRef={mainScroll}
     />
   </>
   );

@@ -331,7 +331,7 @@ function BookVisual({ item, index }) {
 }
 
 // A book that can be long-pressed and dragged.
-function DraggableBook({ item, index, pos, onPress, onLift, onMove, onDrop }) {
+function DraggableBook({ item, index, pos, scrollShift, onPress, onLift, onMove, onDrop }) {
   const x = useSharedValue(pos.x);
   const y = useSharedValue(pos.y);
   const targetX = useSharedValue(pos.x);
@@ -340,6 +340,9 @@ function DraggableBook({ item, index, pos, onPress, onLift, onMove, onDrop }) {
   const startY = useSharedValue(0);
   const dragging = useSharedValue(0);
   const lift = useSharedValue(0);
+  // How far the page had auto-scrolled when this drag started; the book is
+  // moved by any scrolling since, so it stays under the finger.
+  const startShift = useSharedValue(0);
 
   // Follow layout changes (other books moving, final drop slot) with a spring.
   useEffect(() => {
@@ -362,6 +365,7 @@ function DraggableBook({ item, index, pos, onPress, onLift, onMove, onDrop }) {
       dragging.value = 1;
       startX.value = x.value;
       startY.value = y.value;
+      startShift.value = scrollShift.value;
       lift.value = withSpring(1, SPRING);
       scheduleOnRN(onLift, key);
     },
@@ -370,11 +374,15 @@ function DraggableBook({ item, index, pos, onPress, onLift, onMove, onDrop }) {
       if (!dragging.value) return;
       x.value = startX.value + e.translationX;
       y.value = startY.value + e.translationY;
-      scheduleOnRN(onMove, key, x.value + halfW, y.value + halfH);
+      const shift = scrollShift.value - startShift.value;
+      scheduleOnRN(onMove, key, x.value + halfW, y.value + shift + halfH, e.absoluteY);
     },
     onFinalize: () => {
       "worklet";
       if (!dragging.value) return;
+      // fold any auto-scroll into the position before springing home
+      y.value = y.value + (scrollShift.value - startShift.value);
+      startShift.value = scrollShift.value;
       dragging.value = 0;
       lift.value = withTiming(0, { duration: 180 });
       x.value = withSpring(targetX.value, SPRING);
@@ -394,7 +402,7 @@ function DraggableBook({ item, index, pos, onPress, onLift, onMove, onDrop }) {
 
   const animatedStyle = useAnimatedStyle(() => ({
     left: x.value,
-    top: y.value,
+    top: y.value + (dragging.value ? scrollShift.value - startShift.value : 0),
     zIndex: dragging.value || lift.value > 0.01 ? 1000 : 1,
     transform: [
       { scale: 1 + lift.value * 0.1 },
@@ -429,10 +437,14 @@ export default function Bookshelf({
   items = [],
   onBookPress,
   onReorder,
+  scrollRef, // ref to { ref, y, contentH, viewportH, windowTop } of the page ScrollView
   emptyTitle = "Your library is waiting",
   emptyMessage = "Add books to start building your collection.",
 }) {
   const draggable = !!onReorder;
+  // Total auto-scroll (points) applied during drags; read by the lifted book.
+  const scrollShift = useSharedValue(0);
+  const autoScrollTimer = useRef(null);
 
   // Shelves after a drop are shown immediately (optimistic) until the parent
   // passes new items; then the parent's data wins again.
@@ -477,38 +489,12 @@ export default function Bookshelf({
 
   const positions = useMemo(() => layoutShelves(displayShelves), [displayShelves]);
 
-  const handleLift = useCallback(key => {
-    const { shelves } = latest.current;
-    let from = null;
-    shelves.forEach((s, r) =>
-      s.forEach((it, i) => {
-        if (itemKey(it, i) === key) from = { row: r, index: i, item: it };
-      })
-    );
-    if (!from) return;
-    const others = removeFromShelves(shelves, key);
-    const d = {
-      key,
-      item: from.item,
-      others,
-      othersLayout: layoutShelves(others),
-      // existing shelves + one spare empty shelf to drop onto
-      shelfCount: shelves.length + 1,
-    };
-    const t = { row: from.row, index: from.index };
-    dragRef.current = { ...d, target: t };
-    setDrag(d);
-    setTarget(t);
-    haptic("lift");
-  }, []);
 
   // Work out the drop target from the lifted book's centre: the shelf under
   // it, then the position along that shelf. Hit-testing uses the layout of the
   // *other* books, which does not change during the drag, so the target never
   // flickers between two slots.
-  const handleMove = useCallback((key, cx, cy) => {
-    const d = dragRef.current;
-    if (!d || d.key !== key) return;
+  const updateTarget = useCallback((d, cx, cy) => {
     const row = Math.min(Math.max(0, Math.floor(cy / UNIT)), d.shelfCount - 1);
     const localX = cx - ROW_PADDING;
     const books = d.others[row] ?? [];
@@ -545,10 +531,88 @@ export default function Bookshelf({
     }
   }, []);
 
+  const handleMove = useCallback(
+    (key, cx, cy, absY) => {
+      const d = dragRef.current;
+      if (!d || d.key !== key) return;
+      d.last = { cx, cy, absY, shift: scrollShift.value };
+      updateTarget(d, cx, cy);
+    },
+    [updateTarget, scrollShift]
+  );
+
+  // Auto-scroll: while a book is held near the top or bottom edge of the
+  // visible page, scroll the page (faster nearer the edge). The lifted book is
+  // shifted by the same amount so it stays under the finger, and the drop
+  // target is re-computed as shelves scroll past.
+  const AUTO_EDGE = 80;
+  const AUTO_MAX_SPEED = 14; // points per frame
+  const stopAutoScroll = useCallback(() => {
+    if (autoScrollTimer.current) clearInterval(autoScrollTimer.current);
+    autoScrollTimer.current = null;
+  }, []);
+  const startAutoScroll = useCallback(() => {
+    stopAutoScroll();
+    const page = scrollRef?.current;
+    if (!page?.ref) return;
+    page.ref.measureInWindow?.((x, y, w, h) => {
+      page.windowTop = y;
+      if (h) page.viewportH = h;
+    });
+    autoScrollTimer.current = setInterval(() => {
+      const d = dragRef.current;
+      if (!d?.last || !page.ref) return;
+      const top = page.windowTop;
+      const bottom = top + page.viewportH;
+      const { absY } = d.last;
+      let v = 0;
+      if (absY < top + AUTO_EDGE) v = -AUTO_MAX_SPEED * Math.min(1, (top + AUTO_EDGE - absY) / AUTO_EDGE);
+      else if (absY > bottom - AUTO_EDGE) v = AUTO_MAX_SPEED * Math.min(1, (absY - (bottom - AUTO_EDGE)) / AUTO_EDGE);
+      if (!v) return;
+      const maxY = Math.max(0, page.contentH - page.viewportH);
+      const nextY = Math.min(maxY, Math.max(0, page.y + v));
+      const delta = nextY - page.y;
+      if (Math.abs(delta) < 0.5) return;
+      page.ref.scrollTo({ y: nextY, animated: false });
+      page.y = nextY;
+      scrollShift.value += delta;
+      updateTarget(d, d.last.cx, d.last.cy + (scrollShift.value - d.last.shift));
+    }, 16);
+  }, [scrollRef, scrollShift, stopAutoScroll, updateTarget]);
+
+  useEffect(() => stopAutoScroll, [stopAutoScroll]);
+
+  const handleLift = useCallback(key => {
+    const { shelves } = latest.current;
+    let from = null;
+    shelves.forEach((s, r) =>
+      s.forEach((it, i) => {
+        if (itemKey(it, i) === key) from = { row: r, index: i, item: it };
+      })
+    );
+    if (!from) return;
+    const others = removeFromShelves(shelves, key);
+    const d = {
+      key,
+      item: from.item,
+      others,
+      othersLayout: layoutShelves(others),
+      // existing shelves + one spare empty shelf to drop onto
+      shelfCount: shelves.length + 1,
+    };
+    const t = { row: from.row, index: from.index };
+    dragRef.current = { ...d, target: t };
+    setDrag(d);
+    setTarget(t);
+    haptic("lift");
+    startAutoScroll();
+  }, [startAutoScroll]);
+
   const handleDrop = useCallback(key => {
     const { shelves, availableWidth, onReorder } = latest.current;
     const d = dragRef.current;
     if (!d || d.key !== key) return;
+    stopAutoScroll();
     const next = settleShelves(
       insertIntoShelves(d.others, d.item, d.target.row, d.target.index),
       availableWidth
@@ -564,7 +628,7 @@ export default function Bookshelf({
     if (changed) {
       onReorder?.(next.flatMap((books, shelf) => books.map(item => ({ item, shelf }))));
     }
-  }, []);
+  }, [stopAutoScroll]);
 
   if (!items.length) {
     return (
@@ -623,6 +687,7 @@ export default function Bookshelf({
                 item={item}
                 index={i}
                 pos={pos}
+                scrollShift={scrollShift}
                 onPress={onBookPress}
                 onLift={handleLift}
                 onMove={handleMove}

@@ -1,4 +1,5 @@
 import "react-native-gesture-handler";
+import { useRef } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -35,6 +36,8 @@ import { ToastHost } from "./src/components/Toast";
 
 export default function App() {
   const folio = useFolioStore();
+  // The main scroll area, shared with the bookshelf so a drag can auto-scroll.
+  const mainScroll = useRef({ ref: null, y: 0, contentH: 0, viewportH: 0, windowTop: 0 });
   const {
     authLoading,
     closeModal,
@@ -76,7 +79,7 @@ if (authLoading) {
 if (!session) return <AuthScreen />;
 
 return (
-  <FolioContext.Provider value={folio}>
+  <FolioContext.Provider value={{ ...folio, mainScroll }}>
   <GestureHandlerRootView style={{ flex: 1 }}>
   <SafeAreaView style={styles.safe}>
     <StatusBar barStyle="light-content" backgroundColor={C.bg} />
@@ -100,9 +103,22 @@ return (
     ) : (
       <>
         <ScrollView
+          ref={r => {
+            mainScroll.current.ref = r;
+          }}
           style={styles.main}
           contentContainerStyle={styles.mainContent}
           keyboardShouldPersistTaps="handled"
+          scrollEventThrottle={16}
+          onScroll={e => {
+            mainScroll.current.y = e.nativeEvent.contentOffset.y;
+          }}
+          onContentSizeChange={(w, h) => {
+            mainScroll.current.contentH = h;
+          }}
+          onLayout={e => {
+            mainScroll.current.viewportH = e.nativeEvent.layout.height;
+          }}
         >
           {renderMain()}
         </ScrollView>
