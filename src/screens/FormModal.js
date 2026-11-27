@@ -8,6 +8,7 @@ import SeriesForm from "./forms/SeriesForm";
 import PreorderForm from "./forms/PreorderForm";
 import SubscriptionForm from "./forms/SubscriptionForm";
 import MonthlyBookForm from "./forms/MonthlyBookForm";
+import MembershipPicker from "./forms/MembershipPicker";
 
 // The add/edit form shown in the app's bottom sheet, chosen by `modal`.
 export default function FormModal() {
@@ -31,6 +32,10 @@ export default function FormModal() {
       return <SubscriptionForm />;
     case "monthlyBook":
       return <MonthlyBookForm />;
+    case "addToCollection":
+      return <MembershipPicker kind="collection" />;
+    case "addToSeries":
+      return <MembershipPicker kind="series" />;
     default:
       return null;
   }

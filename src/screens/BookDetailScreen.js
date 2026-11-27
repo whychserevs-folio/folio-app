@@ -1,15 +1,14 @@
-import { Alert, Text, View } from "react-native";
+import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { supabase } from "../supabase";
 import styles from "../styles";
+import { C } from "../theme";
 import { AppButton, Cover } from "../components/ui";
 import { useFolio } from "../state/FolioContext";
 
 export default function BookDetailScreen() {
   const {
     addAnotherEdition,
-    addBookToCollection,
-    addBookToSeries,
     addPhysicalCopy,
     collectionBooks,
     collections,
@@ -19,9 +18,12 @@ export default function BookDetailScreen() {
     loadData,
     openEditBook,
     physicalCopies,
+    removeBookFromCollection,
+    removeBookFromSeries,
     selectedBook,
     series,
     seriesBooks,
+    setModal,
     setSelectedBook,
     tbrIds,
     toggleList,
@@ -232,52 +234,98 @@ export default function BookDetailScreen() {
       })}
 
       <View style={styles.sectionDivider} />
-      <Text style={styles.sectionTitle}>Add to collections</Text>
+      <Text style={styles.sectionTitle}>Collections & series</Text>
 
-      {collections.map(collection => {
-        const alreadyAdded = collectionBooks.some(
-          row =>
-            row.collection_id === collection.id &&
-            row.book_id === currentBook.id
-        );
+      {/* What this book is in, as chips (tap × to remove) */}
+      {(() => {
+        const inCollections = collectionBooks
+          .filter(row => row.book_id === currentBook.id)
+          .map(row => ({ row, kind: "collection", name: collections.find(c => c.id === row.collection_id)?.name }))
+          .filter(x => x.name);
+        const inSeries = seriesBooks
+          .filter(row => row.book_id === currentBook.id)
+          .map(row => {
+            const s = series.find(x => x.id === row.series_id);
+            const order = Number(row.reading_order);
+            return { row, kind: "series", name: s?.name, order: order > 0 ? order : null };
+          })
+          .filter(x => x.name);
+        const memberships = [...inSeries, ...inCollections];
 
-        return (
-          <View key={collection.id} style={styles.collectionAddRow}>
-            <Text style={styles.bodyText}>{collection.name}</Text>
-            <AppButton
-              label={alreadyAdded ? "Added" : "Add"}
-              compact
-              secondary
-              disabled={alreadyAdded}
-              onPress={() =>
-                addBookToCollection(currentBook.id, collection.id)
-              }
-            />
+        return memberships.length ? (
+          <View style={local.chips}>
+            {memberships.map(m => (
+              <View key={m.row.id} style={local.chip}>
+                <Text style={local.chipKind}>{m.kind === "series" ? "SERIES" : "COLLECTION"}</Text>
+                <Text style={local.chipName} numberOfLines={1}>
+                  {m.name}
+                  {m.order ? ` · #${m.order}` : ""}
+                </Text>
+                <Pressable
+                  hitSlop={8}
+                  onPress={() =>
+                    m.kind === "series" ? removeBookFromSeries(m.row) : removeBookFromCollection(m.row)
+                  }
+                  accessibilityLabel={`Remove from ${m.name}`}
+                >
+                  <Text style={local.chipRemove}>×</Text>
+                </Pressable>
+              </View>
+            ))}
           </View>
+        ) : (
+          <Text style={[styles.mutedText, { marginBottom: 12 }]}>
+            Not in any collection or series yet.
+          </Text>
         );
-      })}
+      })()}
 
-      <View style={styles.sectionDivider} />
-      <Text style={styles.sectionTitle}>Series</Text>
-
-      {series.map(s => {
-        const alreadyAdded = seriesBooks.some(
-          row => row.series_id === s.id && row.book_id === currentBook.id
-        );
-
-        return (
-          <View key={s.id} style={styles.collectionAddRow}>
-            <Text style={styles.bodyText}>{s.name}</Text>
-            <AppButton
-              label={alreadyAdded ? "Added" : "Add"}
-              compact
-              secondary
-              disabled={alreadyAdded}
-              onPress={() => addBookToSeries(currentBook.id, s.id)}
-            />
-          </View>
-        );
-      })}
+      <View style={local.addRow}>
+        <AppButton label="+ Collection" compact secondary onPress={() => setModal("addToCollection")} />
+        <AppButton label="+ Series" compact secondary onPress={() => setModal("addToSeries")} />
+      </View>
     </View>
   );
 }
+
+const local = StyleSheet.create({
+  chips: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 12,
+  },
+  chip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    maxWidth: "100%",
+    borderWidth: 1,
+    borderColor: C.line,
+    backgroundColor: C.surface,
+    borderRadius: 18,
+    paddingLeft: 12,
+    paddingRight: 10,
+    paddingVertical: 7,
+  },
+  chipKind: {
+    color: C.goldDim,
+    fontSize: 8,
+    letterSpacing: 1.2,
+  },
+  chipName: {
+    flexShrink: 1,
+    color: C.text,
+    fontSize: 13,
+  },
+  chipRemove: {
+    color: C.muted,
+    fontSize: 16,
+    lineHeight: 18,
+  },
+  addRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 8,
+  },
+});
