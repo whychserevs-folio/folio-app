@@ -57,12 +57,26 @@ export const itemKey = (item, index) =>
   String(item.editionRecord?.id ?? item.id ?? `${getBookId(item)}-${index}`);
 
 // Visual size of a book, matching what <BookVisual> draws.
+// Stable per-book number (same book -> same value every time), used to give
+// generated books natural variety in size, like a real shelf.
+export function bookHash(item) {
+  const id = String(item.editionRecord?.id ?? item.id ?? getTitle(item));
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
+// Size of a book on the shelf. Books with a real spine/edge photo keep the
+// photo's standard size; generated spines vary a little in height and
+// thickness (stable per book), and lying books in thickness.
 export function getBookSize(item) {
   const style = getStyle(item);
   if (style === "cover") return getCover(item) ? { w: 65, h: 110 } : { w: 80, h: 140 };
-  if (style === "stack") return { w: 90, h: 26 };
+  if (style === "stack") return { w: 90, h: 22 + (bookHash(item) % 7) }; // 22-28
   if (style === "edge") return { w: 40, h: 140 };
-  return { w: 30, h: 140 };
+  if (getSpine(item)) return { w: 30, h: 140 };
+  const n = bookHash(item);
+  return { w: 26 + (n % 7), h: 128 + ((n >> 3) % 13) }; // 26-32 x 128-140
 }
 
 export const MAX_PILE = 5; // lying ("stack") books per pile

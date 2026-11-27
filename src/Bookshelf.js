@@ -39,6 +39,7 @@ import {
   getTitle,
   getCover,
   getSpine,
+  bookHash,
   getEdge,
   getStyle,
   itemKey,
@@ -136,66 +137,96 @@ function getAuthorSurname(item) {
  * Real photos, when added, always win.
  */
 
-// The cover is squeezed into the spine and heavily blurred: its lettering
-// disappears and only its colours remain, top to bottom. That gives every
-// generated spine the book's own palette without fragments of cover text.
+// Generated books (no spine photo). The cover, if any, is squeezed into the
+// spine and heavily blurred so only its colours remain (no fragments of the
+// cover's lettering). Shading makes the spine look rounded: light catches the
+// left edge, the right side falls into shadow, with a soft head and tail.
+// Titles are set in a serif, like printed spines. Sizes vary per book (see
+// getBookSize) so a shelf of generated spines looks like a real shelf.
 const COLOUR_BLUR = 24; // Android caps blur at 25
+const SERIF = Platform.select({
+  ios: "Georgia",
+  android: "serif",
+  default: "Georgia, 'Times New Roman', serif",
+});
 
-// Standing spine (30 x 140): cover colours, darker head and tail bands with
-// thin rules, and the title + author set down the spine like a printed book.
-function CoverSpine({ item, cover }) {
+function SpineArt({ cover }) {
+  return cover ? (
+    <Image source={{ uri: cover }} contentFit="fill" blurRadius={COLOUR_BLUR} style={StyleSheet.absoluteFill} />
+  ) : null;
+}
+
+// Standing spine (w x h).
+function GeneratedSpine({ item, cover, w, h }) {
+  const title = getTitle(item).toUpperCase();
+  const surname = getAuthorSurname(item).toUpperCase();
+  // long titles take the whole spine (as on many real books)
+  const showAuthor = !!surname && title.length + surname.length <= 17;
+  const len = h - 20; // label runs between head and tail
   return (
-    <View style={[styles.genSpine, { backgroundColor: placeholderColour(item) }]}>
-      <Image source={{ uri: cover }} contentFit="fill" blurRadius={COLOUR_BLUR} style={StyleSheet.absoluteFill} />
-      <View style={styles.genShade} />
-      <View style={[styles.genBand, { top: 0 }]} />
-      <View style={[styles.genBand, { bottom: 0 }]} />
-      <View style={[styles.genRuleH, { top: 15 }]} />
-      <View style={[styles.genRuleH, { bottom: 15 }]} />
-      <View style={styles.genSpineHighlight} />
-      <View style={styles.genSpineLabel}>
-        <Text
-          numberOfLines={2}
-          adjustsFontSizeToFit
-          minimumFontScale={0.75}
-          style={styles.genSpineTitle}
-        >
-          {getTitle(item).toUpperCase()}
+    <View style={[styles.genBook, { width: w, height: h, backgroundColor: placeholderColour(item) }]}>
+      <SpineArt cover={cover} />
+      <View style={styles.genTint} />
+      <View style={[styles.strip, { left: 0, width: 1.5, backgroundColor: "rgba(255,255,255,0.24)" }]} />
+      <View style={[styles.strip, { left: 1.5, width: Math.round(w * 0.24), backgroundColor: "rgba(255,255,255,0.07)" }]} />
+      <View style={[styles.strip, { right: 0, width: Math.round(w * 0.3), backgroundColor: "rgba(0,0,0,0.2)" }]} />
+      <View style={[styles.strip, { right: 0, width: 2, backgroundColor: "rgba(0,0,0,0.38)" }]} />
+      <View style={[styles.band, { top: 0, height: 3 }]} />
+      <View style={[styles.band, { bottom: 0, height: 4 }]} />
+      <View
+        style={[
+          styles.spineLabel,
+          { width: len, height: w, left: (w - len) / 2, top: (h - w) / 2 },
+        ]}
+      >
+        <Text numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.7} style={styles.spineTitle}>
+          {title}
         </Text>
-        <Text numberOfLines={1} style={styles.genSpineAuthor}>
-          {getAuthorSurname(item).toUpperCase()}
-        </Text>
+        {showAuthor && (
+          <Text numberOfLines={1} style={styles.spineAuthor}>
+            {surname}
+          </Text>
+        )}
       </View>
     </View>
   );
 }
 
-// Lying book (90 x 26): the same design turned on its side.
-function CoverLying({ item, cover }) {
-  // Only 90pt long: show the surname too only when both comfortably fit.
+// Lying book (in a 90 x h slot). Lengths and alignment vary a little per
+// book so a pile looks stacked by hand, not like identical bars.
+function GeneratedLying({ item, cover, h }) {
+  const n = bookHash(item);
+  const len = 82 + (n % 9); // 82-90
+  const shift = Math.max(-((90 - len) / 2), Math.min((90 - len) / 2, ((n >> 4) % 7) - 3));
   const title = getTitle(item).toUpperCase();
   const surname = getAuthorSurname(item).toUpperCase();
-  const showAuthor = title.length + surname.length <= 11;
+  const showAuthor = !!surname && title.length + surname.length <= 10;
   return (
-    <View style={[styles.genLying, { backgroundColor: placeholderColour(item) }]}>
-      <Image source={{ uri: cover }} contentFit="fill" blurRadius={COLOUR_BLUR} style={StyleSheet.absoluteFill} />
-      <View style={styles.genShade} />
-      <View style={[styles.genBandV, { left: 0 }]} />
-      <View style={[styles.genBandV, { right: 0 }]} />
-      <View style={[styles.genRuleV, { left: 10 }]} />
-      <View style={[styles.genRuleV, { right: 10 }]} />
-      <View style={styles.genLyingLabel}>
+    <View
+      style={[
+        styles.genBook,
+        { width: len, height: h, marginLeft: (90 - len) / 2 + shift, backgroundColor: placeholderColour(item) },
+      ]}
+    >
+      <SpineArt cover={cover} />
+      <View style={styles.genTint} />
+      <View style={[styles.stripH, { top: 0, height: 1.5, backgroundColor: "rgba(255,255,255,0.24)" }]} />
+      <View style={[styles.stripH, { top: 1.5, height: Math.round(h * 0.25), backgroundColor: "rgba(255,255,255,0.07)" }]} />
+      <View style={[styles.stripH, { bottom: 0, height: Math.round(h * 0.3), backgroundColor: "rgba(0,0,0,0.2)" }]} />
+      <View style={[styles.stripH, { bottom: 0, height: 2, backgroundColor: "rgba(0,0,0,0.38)" }]} />
+      <View style={[styles.bandV, { left: 0 }]} />
+      <View style={[styles.bandV, { right: 0 }]} />
+      <View style={styles.lyingLabel}>
         <Text
-          // several words may wrap onto 2 lines; one long word shrinks instead
           numberOfLines={title.includes(" ") ? 2 : 1}
           adjustsFontSizeToFit
           minimumFontScale={0.6}
-          style={styles.genLyingTitle}
+          style={styles.lyingTitle}
         >
           {title}
         </Text>
         {showAuthor && (
-          <Text numberOfLines={1} style={styles.genLyingAuthor}>
+          <Text numberOfLines={1} style={styles.lyingAuthor}>
             {surname}
           </Text>
         )}
@@ -235,27 +266,26 @@ function BookVisual({ item, index }) {
     );
   }
   if (style === "stack") {
-    // A book lying flat. With a spine photo, show the spine rotated to lie
-    // horizontally; otherwise a coloured book block with the title. (The old
-    // version cropped a thin strip out of the front cover, which looked broken.)
+    // A book lying flat: the spine photo turned on its side, or a generated one.
     return (
-      <View style={{ width: 90, height: 26 }}>
+      <View style={{ width: 90, height: h }}>
         {spine ? (
-          <View style={styles.lyingBook}>
+          <View style={[styles.genBook, { width: 90, height: h }]}>
             <Image
               source={{ uri: spine }}
               contentFit="fill"
-              style={styles.lyingSpineImage}
+              style={{
+                position: "absolute",
+                width: h,
+                height: 90,
+                left: (90 - h) / 2,
+                top: (h - 90) / 2,
+                transform: [{ rotate: "-90deg" }],
+              }}
             />
           </View>
-        ) : cover ? (
-          <CoverLying item={item} cover={cover} />
         ) : (
-          <View style={[styles.lyingBook, { backgroundColor: placeholderColour(item) }]}>
-            <Text numberOfLines={1} style={styles.stackText}>
-              {getTitle(item)}
-            </Text>
-          </View>
+          <GeneratedLying item={item} cover={cover} h={h} />
         )}
       </View>
     );
@@ -278,7 +308,7 @@ function BookVisual({ item, index }) {
       />
     );
   }
-  if (style === "spine" && cover) return <CoverSpine item={item} cover={cover} />;
+  if (style === "spine") return <GeneratedSpine item={item} cover={cover} w={w} h={h} />;
   if (style === "edge" && cover) return <CoverEdge item={item} cover={cover} />;
   return (
     <View
@@ -740,119 +770,101 @@ const styles = StyleSheet.create({
     top: -32,
     transform: [{ rotate: "-90deg" }],
   },
-  genSpine: {
-    width: 30,
-    height: 140,
+  genBook: {
     borderRadius: 2,
     overflow: "hidden",
   },
-  genShade: {
+  genTint: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(12,10,12,0.28)",
+    backgroundColor: "rgba(12,10,12,0.16)",
   },
-  // head and tail of the spine
-  genBand: {
+  // vertical shading strips (standing spine)
+  strip: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+  },
+  // horizontal shading strips (lying book)
+  stripH: {
     position: "absolute",
     left: 0,
     right: 0,
-    height: 12,
-    backgroundColor: "rgba(0,0,0,0.32)",
   },
-  genRuleH: {
-    position: "absolute",
-    left: 4,
-    right: 4,
-    height: 1,
-    backgroundColor: "rgba(240,235,231,0.45)",
-  },
-  genSpineHighlight: {
+  // head / tail of a standing spine
+  band: {
     position: "absolute",
     left: 0,
+    right: 0,
+    backgroundColor: "rgba(0,0,0,0.3)",
+  },
+  // book ends of a lying book
+  bandV: {
+    position: "absolute",
     top: 0,
     bottom: 0,
-    width: 2,
-    backgroundColor: "rgba(255,255,255,0.16)",
+    width: 3,
+    backgroundColor: "rgba(0,0,0,0.28)",
   },
-  // Label column 104 x 30, rotated to run top-to-bottom between the rules.
-  genSpineLabel: {
+  // rotated to run top-to-bottom down the spine
+  spineLabel: {
     position: "absolute",
-    width: 104,
-    height: 30,
-    left: -37,
-    top: 55,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    paddingHorizontal: 2,
     transform: [{ rotate: "90deg" }],
   },
-  genSpineTitle: {
-    flex: 1,
+  spineTitle: {
+    flexShrink: 1,
     textAlign: "center",
-    color: "#F5EFE8",
-    fontSize: 7.5,
-    lineHeight: 9,
-    fontWeight: "700",
-    letterSpacing: 0.9,
-    textShadowColor: "rgba(0,0,0,0.55)",
+    color: "#F4EDE2",
+    fontFamily: SERIF,
+    fontSize: 8.5,
+    lineHeight: 10,
+    fontWeight: "600",
+    letterSpacing: 1,
+    textShadowColor: "rgba(0,0,0,0.6)",
     textShadowRadius: 2,
   },
-  genSpineAuthor: {
-    maxWidth: 34,
-    color: "#F5EFE8",
-    opacity: 0.75,
-    fontSize: 6,
-    letterSpacing: 0.6,
-    marginLeft: 4,
-    textShadowColor: "rgba(0,0,0,0.55)",
+  spineAuthor: {
+    maxWidth: 48,
+    color: "#F4EDE2",
+    opacity: 0.78,
+    fontFamily: SERIF,
+    fontSize: 6.5,
+    letterSpacing: 0.8,
+    marginLeft: 6,
+    textShadowColor: "rgba(0,0,0,0.6)",
     textShadowRadius: 2,
   },
-  genLying: {
-    width: 90,
-    height: 26,
-    borderRadius: 2,
-    overflow: "hidden",
-    justifyContent: "center",
-  },
-  // book ends (head/tail) when lying flat
-  genBandV: {
-    position: "absolute",
-    top: 0,
-    bottom: 0,
-    width: 7,
-    backgroundColor: "rgba(0,0,0,0.32)",
-  },
-  genRuleV: {
-    position: "absolute",
-    top: 3,
-    bottom: 3,
-    width: 1,
-    backgroundColor: "rgba(240,235,231,0.45)",
-  },
-  genLyingLabel: {
+  lyingLabel: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 13,
+    paddingHorizontal: 8,
   },
-  genLyingTitle: {
+  lyingTitle: {
     flexShrink: 1,
     textAlign: "center",
-    color: "#F5EFE8",
-    fontSize: 7,
-    lineHeight: 8.5,
-    fontWeight: "700",
-    letterSpacing: 0.6,
-    textShadowColor: "rgba(0,0,0,0.55)",
+    color: "#F4EDE2",
+    fontFamily: SERIF,
+    fontSize: 8,
+    lineHeight: 9,
+    fontWeight: "600",
+    letterSpacing: 0.8,
+    textShadowColor: "rgba(0,0,0,0.6)",
     textShadowRadius: 2,
   },
-  genLyingAuthor: {
-    maxWidth: 26,
-    color: "#F5EFE8",
-    opacity: 0.75,
-    fontSize: 5.5,
-    letterSpacing: 0.8,
-    marginLeft: 4,
-    textShadowColor: "rgba(0,0,0,0.55)",
+  lyingAuthor: {
+    maxWidth: 30,
+    color: "#F4EDE2",
+    opacity: 0.78,
+    fontFamily: SERIF,
+    fontSize: 6,
+    letterSpacing: 0.6,
+    marginLeft: 5,
+    textShadowColor: "rgba(0,0,0,0.6)",
     textShadowRadius: 2,
   },
   genEdge: {

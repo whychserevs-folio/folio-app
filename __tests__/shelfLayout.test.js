@@ -13,16 +13,19 @@ import {
 
 // Minimal library items as built in useFolioStore.libraryItems
 let n = 0;
+// spines/lying books get a photo here so their size is the fixed standard one
 const book = (style = "spine", shelf = 0, extra = {}) => {
   n += 1;
+  const photo = style === "spine" ? { spine_image_url: "x" } : {};
   return {
     id: `b${n}`,
     title: `Book ${n}`,
-    editionRecord: { id: `e${n}`, display_style: style, shelf_index: shelf, ...extra },
+    editionRecord: { id: `e${n}`, display_style: style, shelf_index: shelf, ...photo, ...extra },
   };
 };
 const keys = shelves => shelves.map(s => s.map(it => it.editionRecord.id));
-const slot = style => getBookSize({ editionRecord: { display_style: style } }).w + BOOK_MARGIN * 2;
+const slot = style =>
+  getBookSize({ editionRecord: { display_style: style, spine_image_url: "x" } }).w + BOOK_MARGIN * 2;
 
 beforeEach(() => {
   n = 0;
@@ -30,9 +33,21 @@ beforeEach(() => {
 
 describe("getBookSize", () => {
   test("matches what the bookshelf draws", () => {
-    expect(getBookSize({ editionRecord: { display_style: "spine" } })).toEqual({ w: 30, h: 140 });
+    // spine photo -> standard size
+    expect(getBookSize({ editionRecord: { display_style: "spine", spine_image_url: "x" } })).toEqual({ w: 30, h: 140 });
     expect(getBookSize({ editionRecord: { display_style: "edge" } })).toEqual({ w: 40, h: 140 });
-    expect(getBookSize({ editionRecord: { display_style: "stack" } })).toEqual({ w: 90, h: 26 });
+    // generated spines and lying books vary, within limits, stably per book
+    const gen = { id: "b1", editionRecord: { id: "ed-42", display_style: "spine" } };
+    const s1 = getBookSize(gen);
+    expect(s1.w).toBeGreaterThanOrEqual(26);
+    expect(s1.w).toBeLessThanOrEqual(32);
+    expect(s1.h).toBeGreaterThanOrEqual(128);
+    expect(s1.h).toBeLessThanOrEqual(140);
+    expect(getBookSize(gen)).toEqual(s1);
+    const lying = getBookSize({ editionRecord: { id: "ed-7", display_style: "stack" } });
+    expect(lying.w).toBe(90);
+    expect(lying.h).toBeGreaterThanOrEqual(22);
+    expect(lying.h).toBeLessThanOrEqual(28);
     // cover with an image vs. placeholder
     expect(getBookSize({ editionRecord: { display_style: "cover", cover_url: "x" } })).toEqual({ w: 65, h: 110 });
     expect(getBookSize({ editionRecord: { display_style: "cover" } })).toEqual({ w: 80, h: 140 });
@@ -115,7 +130,7 @@ describe("layoutShelves", () => {
     const pos = layoutShelves([[book("stack"), book("stack")]]);
     const bottom = pos.get("e1"), top = pos.get("e2");
     expect(top.x).toBe(bottom.x);
-    expect(top.y).toBe(bottom.y - bottom.h);
+    expect(top.y + top.h).toBe(bottom.y); // rests exactly on the book below
     expect(top.pile && bottom.pile).toBe(true);
   });
 });
