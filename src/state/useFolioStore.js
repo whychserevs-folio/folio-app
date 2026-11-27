@@ -579,24 +579,27 @@ const libraryItems = useMemo(() => {
   });
 }, [books, editions, tbrIds, dnfIds]);
 
-// Persist a drag-and-drop shelf order. Optimistic: update local editions
-// first, then save in one RPC call; reload from the server if the save fails.
+// Persist the bookshelf layout after a drag: every book's order and which
+// shelf it is on. `layout` is [{ item, shelf }] in display order.
+// Optimistic: update local editions first, then save in one RPC call;
+// reload from the server if the save fails.
 const reorderLibrary = useCallback(
-  async orderedItems => {
-    const editionIds = orderedItems
-      .map(item => item.editionRecord?.id)
-      .filter(Boolean);
-    if (!editionIds.length) return;
+  async layout => {
+    const placed = layout.filter(({ item }) => item.editionRecord?.id);
+    if (!placed.length) return;
+    const editionIds = placed.map(({ item }) => item.editionRecord.id);
+    const shelfIndexes = placed.map(({ shelf }) => shelf);
 
-    const position = new Map(editionIds.map((id, i) => [id, i + 1]));
+    const slot = new Map(
+      placed.map(({ item, shelf }, i) => [item.editionRecord.id, { sort_order: i + 1, shelf_index: shelf }])
+    );
     setEditions(current =>
-      current.map(e =>
-        position.has(e.id) ? { ...e, sort_order: position.get(e.id) } : e
-      )
+      current.map(e => (slot.has(e.id) ? { ...e, ...slot.get(e.id) } : e))
     );
 
-    const { error } = await supabase.rpc("reorder_editions", {
+    const { error } = await supabase.rpc("save_shelf_layout", {
       p_edition_ids: editionIds,
+      p_shelf_indexes: shelfIndexes,
     });
 
     if (error) {
